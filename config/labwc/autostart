@@ -1,4 +1,25 @@
 #!/bin/sh
+# labwc runs this after the Wayland socket exists.
+# Attach the PAM-unlocked keyring to this session bus. --start joins the
+# daemon pam_gnome_keyring already launched. It does not create a second
+# locked keyring when that daemon is running.
+if command -v gnome-keyring-daemon >/dev/null 2>&1; then
+    eval "$(gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)"
+fi
+
+vars=""
+for name in WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE GNOME_KEYRING_CONTROL SSH_AUTH_SOCK; do
+    eval "val=\${${name}-}"
+    if [ -n "${val}" ]; then
+        vars="${vars} ${name}"
+    fi
+done
+# shellcheck disable=SC2086
+systemctl --user import-environment ${vars}
+# shellcheck disable=SC2086
+dbus-update-activation-environment --systemd ${vars}
+systemctl --user start graphical-session.target
+
 # Phase 1 stand-ins. A failing panel must not block login.
 waybar >/dev/null 2>&1 &
 wl-paste --watch cliphist store >/dev/null 2>&1 &

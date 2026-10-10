@@ -20,6 +20,7 @@ dnf5 install -y \
     fuzzel \
     foot \
     nautilus \
+    sushi \
     xdg-desktop-portal \
     xdg-desktop-portal-gtk \
     xdg-desktop-portal-wlr \
@@ -41,13 +42,49 @@ dnf5 install -y \
     curl \
     rsms-inter-fonts \
     jetbrains-mono-fonts \
-    adwaita-cursor-theme
+    adwaita-cursor-theme \
+    gnome-keyring
 
 install -d /etc/xdg/labwc /etc/skel/.config/labwc
 cp -a /ctx/config/labwc/. /etc/xdg/labwc/
 cp -a /ctx/config/labwc/. /etc/skel/.config/labwc/
 chmod 755 /etc/xdg/labwc/autostart /etc/skel/.config/labwc/autostart \
-    /usr/libexec/elavo-grim-region /usr/libexec/elavo-app-menu
+    /usr/libexec/elavo-grim-region /usr/libexec/elavo-app-menu \
+    /usr/libexec/elavo-session
+
+# Unlock the login keyring with the greetd password. Append after the last
+# line of each group so auto_start runs after pam_systemd. The package file
+# is the Fedora stack; these lines are only added when they are missing.
+patch_pam() {
+    local file="$1"
+    local group="$2"
+    local line="$3"
+    [[ -f "${file}" ]] || return 0
+    grep -qF "${line}" "${file}" && return 0
+    awk -v group="${group}" -v line="${line}" '
+        $1 == group { last = NR }
+        { lines[NR] = $0 }
+        END {
+            if (last == 0) {
+                for (i = 1; i <= NR; i++) print lines[i]
+                print line
+                exit
+            }
+            for (i = 1; i <= NR; i++) {
+                print lines[i]
+                if (i == last) print line
+            }
+        }
+    ' "${file}" > "${file}.elavo"
+    mv "${file}.elavo" "${file}"
+}
+test -f /etc/pam.d/greetd
+test -f /etc/pam.d/passwd
+test -x /usr/bin/gnome-keyring-daemon
+find /usr/lib64/security /usr/lib/security -name pam_gnome_keyring.so -print -quit | grep -q .
+patch_pam /etc/pam.d/greetd auth "auth        optional      pam_gnome_keyring.so"
+patch_pam /etc/pam.d/greetd session "session     optional      pam_gnome_keyring.so auto_start"
+patch_pam /etc/pam.d/passwd password "password    optional      pam_gnome_keyring.so"
 
 /usr/libexec/gtkgreet-update-environments -w /etc/greetd/environments
 

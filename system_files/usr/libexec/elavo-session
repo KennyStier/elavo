@@ -1,0 +1,24 @@
+#!/bin/sh
+# greetd runs this. PAM has already unlocked gnome-keyring when the password
+# was accepted. labwc's autostart starts graphical-session.target after the
+# Wayland socket exists. This script does not exec labwc, so the stop below
+# runs when the compositor exits and the greeter comes back.
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-elavo}"
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
+
+vars="XDG_CURRENT_DESKTOP XDG_SESSION_TYPE"
+if [ -n "${GNOME_KEYRING_CONTROL:-}" ]; then
+    vars="${vars} GNOME_KEYRING_CONTROL"
+fi
+if [ -n "${SSH_AUTH_SOCK:-}" ]; then
+    vars="${vars} SSH_AUTH_SOCK"
+fi
+# shellcheck disable=SC2086
+systemctl --user import-environment ${vars} || true
+# shellcheck disable=SC2086
+dbus-update-activation-environment --systemd ${vars} || true
+
+labwc
+status=$?
+systemctl --user stop graphical-session.target || true
+exit "${status}"

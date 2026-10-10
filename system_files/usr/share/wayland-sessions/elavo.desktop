@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Elavo
 Comment=Elavo labwc session
-Exec=labwc
+Exec=/usr/libexec/elavo-session
 Type=Application
 DesktopNames=elavo
