@@ -43,7 +43,8 @@ dnf5 install -y \
     rsms-inter-fonts \
     jetbrains-mono-fonts \
     adwaita-cursor-theme \
-    gnome-keyring
+    gnome-keyring \
+    gnome-keyring-pam
 
 install -d /etc/xdg/labwc /etc/skel/.config/labwc
 cp -a /ctx/config/labwc/. /etc/xdg/labwc/
@@ -81,7 +82,7 @@ patch_pam() {
 test -f /etc/pam.d/greetd
 test -f /etc/pam.d/passwd
 test -x /usr/bin/gnome-keyring-daemon
-find /usr/lib64/security /usr/lib/security -name pam_gnome_keyring.so -print -quit | grep -q .
+test -e /usr/lib64/security/pam_gnome_keyring.so
 patch_pam /etc/pam.d/greetd auth "auth        optional      pam_gnome_keyring.so"
 patch_pam /etc/pam.d/greetd session "session     optional      pam_gnome_keyring.so auto_start"
 patch_pam /etc/pam.d/passwd password "password    optional      pam_gnome_keyring.so"
