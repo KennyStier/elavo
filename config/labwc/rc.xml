@@ -22,7 +22,34 @@
       <action name="Execute" command="foot" />
     </keybind>
     <keybind key="W-Space">
-      <action name="Execute" command="fuzzel" />
+      <action name="Execute" command="elavo-lens --toggle" />
+    </keybind>
+    <keybind key="W-1">
+      <action name="Execute" command="elavo-dock --activate 1" />
+    </keybind>
+    <keybind key="W-2">
+      <action name="Execute" command="elavo-dock --activate 2" />
+    </keybind>
+    <keybind key="W-3">
+      <action name="Execute" command="elavo-dock --activate 3" />
+    </keybind>
+    <keybind key="W-4">
+      <action name="Execute" command="elavo-dock --activate 4" />
+    </keybind>
+    <keybind key="W-5">
+      <action name="Execute" command="elavo-dock --activate 5" />
+    </keybind>
+    <keybind key="W-6">
+      <action name="Execute" command="elavo-dock --activate 6" />
+    </keybind>
+    <keybind key="W-7">
+      <action name="Execute" command="elavo-dock --activate 7" />
+    </keybind>
+    <keybind key="W-8">
+      <action name="Execute" command="elavo-dock --activate 8" />
+    </keybind>
+    <keybind key="W-9">
+      <action name="Execute" command="elavo-dock --activate 9" />
     </keybind>
     <keybind key="W-q">
       <action name="Close" />

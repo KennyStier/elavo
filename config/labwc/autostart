@@ -18,12 +18,14 @@ done
 systemctl --user import-environment ${vars}
 # shellcheck disable=SC2086
 dbus-update-activation-environment --systemd ${vars}
+# The panel and the dock (elavo-shell) are user services wanted by this
+# target, so they start here and restart if they crash.
 systemctl --user start graphical-session.target
 
-# Phase 1 stand-ins. A failing panel must not block login.
-waybar >/dev/null 2>&1 &
 wl-paste --watch cliphist store >/dev/null 2>&1 &
+# "lock" handles loginctl lock-session, which the Elavo menu's Lock Screen uses.
 swayidle -w \
+    lock 'swaylock -f -c 000000' \
     timeout 300 'swaylock -f -c 000000' \
     timeout 600 'wlopm --off *' \
     resume 'wlopm --on *' \

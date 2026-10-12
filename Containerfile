@@ -1,8 +1,21 @@
+# elavo-shell (panel and dock), built at a pinned tag. Same Fedora release as
+# base-main, so the binaries link against the GTK the image ships.
+FROM registry.fedoraproject.org/fedora:44 AS shell
+ARG ELAVO_SHELL_REF=v0.1.0
+RUN dnf5 install -y git gcc pkgconf-pkg-config rust cargo \
+        gtk4-devel gtk4-layer-shell-devel wayland-devel && \
+    dnf5 clean all
+RUN git clone --depth 1 --branch "${ELAVO_SHELL_REF}" \
+        https://github.com/elavo-io/elavo-shell.git /src
+WORKDIR /src
+RUN cargo build --release --locked && DESTDIR=/out scripts/install
+
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
 COPY config /config
+COPY --from=shell /out /shell_files
 
 # Base Image
 FROM ghcr.io/ublue-os/base-main:latest

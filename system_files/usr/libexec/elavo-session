@@ -18,7 +18,9 @@ systemctl --user import-environment ${vars} || true
 # shellcheck disable=SC2086
 dbus-update-activation-environment --systemd ${vars} || true
 
-labwc
+# --merge-config reads /etc/xdg/labwc and then ~/.config/labwc, so image
+# updates reach existing accounts and users keep only what they change.
+labwc --merge-config
 status=$?
 systemctl --user stop graphical-session.target || true
 exit "${status}"

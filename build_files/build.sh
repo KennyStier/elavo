@@ -16,8 +16,7 @@ dnf5 install -y \
     greetd \
     gtkgreet \
     cage \
-    waybar \
-    fuzzel \
+    gtk4-layer-shell \
     foot \
     nautilus \
     sushi \
@@ -46,12 +45,28 @@ dnf5 install -y \
     gnome-keyring \
     gnome-keyring-pam
 
-install -d /etc/xdg/labwc /etc/skel/.config/labwc
+# No copy in /etc/skel: elavo-session runs labwc --merge-config, so these
+# system files stay in effect and ~/.config/labwc holds only user changes.
+install -d /etc/xdg/labwc
 cp -a /ctx/config/labwc/. /etc/xdg/labwc/
-cp -a /ctx/config/labwc/. /etc/skel/.config/labwc/
-chmod 755 /etc/xdg/labwc/autostart /etc/skel/.config/labwc/autostart \
-    /usr/libexec/elavo-grim-region /usr/libexec/elavo-app-menu \
-    /usr/libexec/elavo-session
+chmod 755 /etc/xdg/labwc/autostart \
+    /usr/libexec/elavo-grim-region /usr/libexec/elavo-session
+
+# Panel, dock, and Lens from elavo-shell (the shell stage in the Containerfile).
+# graphical-session.target, started from labwc's autostart, pulls them in.
+cp -a /ctx/shell_files/. /
+test -x /usr/bin/elavo-panel
+test -x /usr/bin/elavo-dock
+test -x /usr/bin/elavo-lens
+systemctl --global enable elavo-panel.service elavo-dock.service elavo-lens.service
+
+# The panel's Elavo menu icon. Pinned, unlike the splash: only the splash
+# follows elavo-visuals main.
+visuals_icon_rev=95273b04bcde852d81f0811d9123e9c51195a594
+install -d /usr/share/icons/hicolor/scalable/apps
+curl -fsSL -o /usr/share/icons/hicolor/scalable/apps/elavo-sun-symbolic.svg \
+    "https://raw.githubusercontent.com/elavo-io/elavo-visuals/${visuals_icon_rev}/icons/unsorted/symbol/elavo-sun.svg"
+gtk-update-icon-cache -f /usr/share/icons/hicolor
 
 # Unlock the login keyring with the greetd password. Append after the last
 # line of each group so auto_start runs after pam_systemd. The package file
