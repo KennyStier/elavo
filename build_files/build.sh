@@ -53,7 +53,8 @@ chmod 755 /etc/xdg/labwc/autostart \
     /usr/libexec/elavo-grim-region /usr/libexec/elavo-session
 
 # Panel, dock, and Lens from elavo-shell (the shell stage in the Containerfile).
-# graphical-session.target, started from labwc's autostart, pulls them in.
+# They are wanted by graphical-session.target, which elavo-session.target
+# (started from labwc's autostart) pulls in.
 cp -a /ctx/shell_files/. /
 test -x /usr/bin/elavo-panel
 test -x /usr/bin/elavo-dock

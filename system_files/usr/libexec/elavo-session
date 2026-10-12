@@ -1,6 +1,6 @@
 #!/bin/sh
 # greetd runs this. PAM has already unlocked gnome-keyring when the password
-# was accepted. labwc's autostart starts graphical-session.target after the
+# was accepted. labwc's autostart starts elavo-session.target after the
 # Wayland socket exists. This script does not exec labwc, so the stop below
 # runs when the compositor exits and the greeter comes back.
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-elavo}"
@@ -22,5 +22,5 @@ dbus-update-activation-environment --systemd ${vars} || true
 # updates reach existing accounts and users keep only what they change.
 labwc --merge-config
 status=$?
-systemctl --user stop graphical-session.target || true
+systemctl --user stop elavo-session.target || true
 exit "${status}"

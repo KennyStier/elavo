@@ -1,0 +1,12 @@
+[Unit]
+Description=Elavo session
+Documentation=man:systemd.special(7)
+# graphical-session.target refuses a manual start. A session starts its own
+# target that binds to it, which pulls it in. BindsTo= only carries a stop
+# from graphical-session.target to this one; PropagatesStopTo= carries the
+# stop at logout the other way.
+BindsTo=graphical-session.target
+PropagatesStopTo=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target
+Before=graphical-session.target

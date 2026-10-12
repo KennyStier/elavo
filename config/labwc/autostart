@@ -18,9 +18,10 @@ done
 systemctl --user import-environment ${vars}
 # shellcheck disable=SC2086
 dbus-update-activation-environment --systemd ${vars}
-# The panel and the dock (elavo-shell) are user services wanted by this
-# target, so they start here and restart if they crash.
-systemctl --user start graphical-session.target
+# The panel, the dock, and Lens (elavo-shell) are user services wanted by
+# graphical-session.target, so they start here and restart if they crash.
+# That target refuses a direct start; elavo-session.target binds to it.
+systemctl --user start elavo-session.target
 
 wl-paste --watch cliphist store >/dev/null 2>&1 &
 # "lock" handles loginctl lock-session, which the Elavo menu's Lock Screen uses.
