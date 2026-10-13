@@ -147,3 +147,69 @@ dconf update
 
 systemctl enable greetd.service elavo-flatpak-preinstall.service
 systemctl set-default graphical.target
+
+# The display name is Elavo. The version number stays Fedora's VERSION_ID,
+# read from the base image, so the same script says Elavo 45 when base-main
+# moves to Fedora 45. ID stays fedora: quay.io/centos-bootc/bootc-image-builder:latest
+# has no fedora-44 definition and no --override-distro-def flag, and an ID of
+# elavo makes the ISO build look for a definition that image does not ship.
+# grub2-switch-to-blscfg derives EFIDIR from ID, so leaving ID=fedora also
+# keeps the signed bootloader in EFI/fedora.
+# Edit /usr/lib/os-release, not the /etc/os-release symlink. sed -i on the
+# symlink would replace it with a regular file.
+osrel=/usr/lib/os-release
+test -f "${osrel}"
+test -L /etc/os-release
+version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}" | tr -d "\"'")
+[[ "${version_id}" =~ ^[0-9]+$ ]]
+kept_version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}")
+kept_platform_id=$(sed -n 's/^PLATFORM_ID=//p' "${osrel}")
+kept_cpe=$(sed -n 's/^CPE_NAME=//p' "${osrel}")
+kept_codename=$(sed -n 's/^VERSION_CODENAME=//p' "${osrel}")
+kept_bz=$(sed -n 's/^REDHAT_BUGZILLA_PRODUCT_VERSION=//p' "${osrel}")
+kept_support=$(sed -n 's/^REDHAT_SUPPORT_PRODUCT_VERSION=//p' "${osrel}")
+kept_ostree=$(sed -n 's/^OSTREE_VERSION=//p' "${osrel}")
+kept_id=$(sed -n 's/^ID=//p' "${osrel}")
+test "${kept_id}" = "fedora"
+
+os_release_set() {
+    local key="$1"
+    local value="$2"
+    if grep -q "^${key}=" "${osrel}"; then
+        awk -v key="${key}" -v value="${value}" '
+            index($0, key "=") == 1 { print key "=" value; next }
+            { print }
+        ' "${osrel}" > "${osrel}.elavo"
+        mv "${osrel}.elavo" "${osrel}"
+    else
+        printf '%s=%s\n' "${key}" "${value}" >> "${osrel}"
+    fi
+}
+
+# The public site URL is not recorded yet. These point at the image repository
+# until that URL exists.
+os_release_set NAME '"Elavo"'
+os_release_set PRETTY_NAME "\"Elavo ${version_id}\""
+os_release_set VERSION "\"${version_id}\""
+os_release_set DEFAULT_HOSTNAME '"elavo"'
+os_release_set LOGO elavo-sun-symbolic
+os_release_set HOME_URL '"https://github.com/elavo-io/elavo"'
+os_release_set DOCUMENTATION_URL '"https://github.com/elavo-io/elavo"'
+os_release_set SUPPORT_URL '"https://github.com/elavo-io/elavo/issues"'
+os_release_set BUG_REPORT_URL '"https://github.com/elavo-io/elavo/issues"'
+
+test "$(sed -n 's/^VERSION_ID=//p' "${osrel}")" = "${kept_version_id}"
+test "$(sed -n 's/^PLATFORM_ID=//p' "${osrel}")" = "${kept_platform_id}"
+test "$(sed -n 's/^CPE_NAME=//p' "${osrel}")" = "${kept_cpe}"
+test "$(sed -n 's/^VERSION_CODENAME=//p' "${osrel}")" = "${kept_codename}"
+test "$(sed -n 's/^REDHAT_BUGZILLA_PRODUCT_VERSION=//p' "${osrel}")" = "${kept_bz}"
+test "$(sed -n 's/^REDHAT_SUPPORT_PRODUCT_VERSION=//p' "${osrel}")" = "${kept_support}"
+test "$(sed -n 's/^OSTREE_VERSION=//p' "${osrel}")" = "${kept_ostree}"
+test "$(sed -n 's/^ID=//p' "${osrel}")" = "${kept_id}"
+grep -q "^PRETTY_NAME=\"Elavo ${version_id}\"\$" "${osrel}"
+grep -q '^NAME="Elavo"$' "${osrel}"
+grep -q "^VERSION=\"${version_id}\"\$" "${osrel}"
+test -L /etc/os-release
+
+test -f /usr/lib/fedora-release
+printf 'Elavo release %s\n' "${version_id}" > /usr/lib/fedora-release
