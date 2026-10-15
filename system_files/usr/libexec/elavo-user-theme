@@ -53,6 +53,27 @@ if command -v flatpak >/dev/null 2>&1; then
         --filesystem=xdg-config/gtk-4.0:ro || true
 fi
 
+# Firefox reads userChrome.css and user.js only when a profile starts, and a
+# new account has no profile until Firefox's first run, so the buttons would
+# be missing that first time. Before any Firefox has run, create the profile
+# the Flatpak would make. CF146F38BCAB2D21 is the hash of its install path,
+# /app/lib/firefox; Default=1 also lets an install with another hash claim it.
+ff_old="${HOME}/.var/app/org.mozilla.firefox/.mozilla/firefox"
+ff="${HOME}/.var/app/org.mozilla.firefox/config/mozilla/firefox"
+if [ ! -e "${ff}/profiles.ini" ] && [ ! -e "${ff_old}/profiles.ini" ] &&
+    [ ! -e "${HOME}/.mozilla/firefox/profiles.ini" ]; then
+    if mkdir -p "${ff}/elavo.default-release"; then
+        chmod 700 "${ff}/elavo.default-release"
+        printf '%s\n' '[CF146F38BCAB2D21]' 'Default=elavo.default-release' \
+            'Locked=1' '' > "${ff}/installs.ini"
+        printf '%s\n' '[Profile0]' 'Name=default-release' 'IsRelative=1' \
+            'Path=elavo.default-release' 'Default=1' '' \
+            '[InstallCF146F38BCAB2D21]' 'Default=elavo.default-release' \
+            'Locked=1' '' '[General]' 'StartWithLastProfile=1' 'Version=2' '' \
+            > "${ff}/profiles.ini"
+    fi
+fi
+
 # Firefox draws its own window buttons; this adds the Elavo ones to each
 # profile.
 [ -x "${theme}/firefox/install.sh" ] && "${theme}/firefox/install.sh" || true
