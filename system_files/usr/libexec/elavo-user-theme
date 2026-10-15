@@ -1,0 +1,95 @@
+#!/bin/sh
+# Runs at each login, before the panel and dock (elavo-user-theme.service).
+# Gives this account the parts of the Elavo theme a system install cannot
+# reach. Every step leaves alone what the user set up themselves, and none
+# of them stops the session from starting.
+set -u
+
+theme=/usr/share/themes/Elavo
+[ -d "${theme}" ] || exit 0
+
+data="${XDG_DATA_HOME:-${HOME}/.local/share}"
+config="${XDG_CONFIG_HOME:-${HOME}/.config}"
+copy="${data}/themes/Elavo"
+
+# A copy in the user's data directory, which Flatpak apps can read; they
+# cannot see /usr/share/themes. A symlink, or a directory without the
+# image's stamp, is the user's own and stays.
+if [ ! -e "${copy}" ] || { [ ! -L "${copy}" ] && [ -f "${copy}/.elavo-image" ]; }; then
+    if ! cmp -s "${theme}/.elavo-image" "${copy}/.elavo-image"; then
+        mkdir -p "${data}/themes"
+        rm -rf "${copy}.new"
+        if cp -a "${theme}" "${copy}.new"; then
+            rm -rf "${copy}"
+            mv "${copy}.new" "${copy}"
+        fi
+    fi
+fi
+
+# libadwaita apps do not load gtk-theme-name; they read the user's
+# gtk-4.0/gtk.css. @import has to come before any rule, so missing lines go
+# at the top. elavo-accent.css is where Settings writes the accent.
+gtk4="${config}/gtk-4.0"
+mkdir -p "${gtk4}"
+[ -e "${gtk4}/elavo-accent.css" ] ||
+    printf '%s\n' '/* The accent chosen in Settings. Empty: the theme default. */' \
+        > "${gtk4}/elavo-accent.css"
+lines=""
+grep -qs 'Elavo/gtk-4.0/libadwaita.css' "${gtk4}/gtk.css" ||
+    lines="@import url(\"file://${copy}/gtk-4.0/libadwaita.css\");"
+grep -qs 'elavo-accent.css' "${gtk4}/gtk.css" ||
+    lines="${lines:+${lines}
+}@import url(\"elavo-accent.css\");"
+if [ -n "${lines}" ]; then
+    { printf '%s\n' "${lines}"; cat "${gtk4}/gtk.css" 2>/dev/null || true; } > "${gtk4}/gtk.css.new" &&
+        mv "${gtk4}/gtk.css.new" "${gtk4}/gtk.css"
+fi
+
+# Read-only access for Flatpak apps to the theme copy and the GTK settings.
+if command -v flatpak >/dev/null 2>&1; then
+    flatpak override --user \
+        --filesystem=xdg-data/themes:ro \
+        --filesystem=xdg-config/gtk-3.0:ro \
+        --filesystem=xdg-config/gtk-4.0:ro || true
+fi
+
+# Firefox draws its own window buttons; this adds the Elavo ones to each
+# profile.
+[ -x "${theme}/firefox/install.sh" ] && "${theme}/firefox/install.sh" || true
+
+# Chrome, Brave, and Chromium use the GTK theme, and with it the Elavo window
+# buttons, only when their theme is set to GTK. They default to Classic on a
+# desktop they do not recognize. Set GTK in profiles that never chose a
+# theme, while the browser is closed (SingletonLock exists while it runs).
+command -v python3 >/dev/null 2>&1 && python3 - "${HOME}" "${config}" <<'EOF' || true
+import glob, json, os, sys
+
+home, config = sys.argv[1], sys.argv[2]
+roots = [
+    f"{config}/google-chrome",
+    f"{config}/BraveSoftware/Brave-Browser",
+    f"{config}/chromium",
+    f"{home}/.var/app/com.google.Chrome/config/google-chrome",
+    f"{home}/.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser",
+    f"{home}/.var/app/org.chromium.Chromium/config/chromium",
+]
+for root in roots:
+    if os.path.lexists(f"{root}/SingletonLock"):
+        continue
+    for path in glob.glob(f"{root}/*/Preferences"):
+        try:
+            with open(path) as f:
+                prefs = json.load(f)
+            theme = prefs.setdefault("extensions", {}).setdefault("theme", {})
+            if any(key in theme for key in ("system_theme", "use_system", "id")):
+                continue
+            theme["system_theme"] = 1
+            with open(f"{path}.elavo", "w") as f:
+                json.dump(prefs, f, separators=(",", ":"))
+            os.replace(f"{path}.elavo", path)
+            print(f"GTK theme: {path}")
+        except (OSError, ValueError, AttributeError):
+            pass
+EOF
+
+exit 0

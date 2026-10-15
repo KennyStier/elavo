@@ -39,6 +39,7 @@ dnf5 install -y \
     plymouth \
     plymouth-plugin-script \
     curl \
+    google-roboto-fonts \
     rsms-inter-fonts \
     jetbrains-mono-fonts \
     adwaita-cursor-theme \
@@ -50,7 +51,8 @@ dnf5 install -y \
 install -d /etc/xdg/labwc
 cp -a /ctx/config/labwc/. /etc/xdg/labwc/
 chmod 755 /etc/xdg/labwc/autostart \
-    /usr/libexec/elavo-grim-region /usr/libexec/elavo-session
+    /usr/libexec/elavo-grim-region /usr/libexec/elavo-session \
+    /usr/libexec/elavo-user-theme
 
 # Panel, dock, and Lens from elavo-shell (the shell stage in the Containerfile).
 # They are wanted by graphical-session.target, which elavo-session.target
@@ -68,6 +70,30 @@ install -d /usr/share/icons/hicolor/scalable/apps
 curl -fsSL -o /usr/share/icons/hicolor/scalable/apps/elavo-sun-symbolic.svg \
     "https://raw.githubusercontent.com/elavo-io/elavo-visuals/${visuals_icon_rev}/icons/unsorted/symbol/elavo-sun.svg"
 gtk-update-icon-cache -f /usr/share/icons/hicolor
+
+# The Elavo theme from elavo-visuals, pinned: GTK4, libadwaita, the GTK3
+# stopgap, labwc's title bars, and Firefox's window buttons. The stamp tells
+# elavo-user-theme which build each account's copy came from.
+visuals_theme_rev=4de4bc939ffa4b15a1806f2b075f4c53b854be53
+theme_tmp=$(mktemp -d)
+curl -fsSL -o "${theme_tmp}/visuals.tar.gz" \
+    "https://github.com/elavo-io/elavo-visuals/archive/${visuals_theme_rev}.tar.gz"
+tar -xzf "${theme_tmp}/visuals.tar.gz" -C "${theme_tmp}" \
+    "elavo-visuals-${visuals_theme_rev}/themes/Elavo"
+install -d /usr/share/themes
+rm -rf /usr/share/themes/Elavo
+cp -a "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/themes/Elavo" /usr/share/themes/Elavo
+rm -rf "${theme_tmp}"
+printf '%s\n' "${visuals_theme_rev}" > /usr/share/themes/Elavo/.elavo-image
+test -f /usr/share/themes/Elavo/gtk-4.0/gtk.css
+test -f /usr/share/themes/Elavo/gtk-4.0/libadwaita.css
+test -f /usr/share/themes/Elavo/gtk-3.0/gtk.css
+test -f /usr/share/themes/Elavo/openbox-3/themerc
+test -e /usr/share/themes/Elavo/openbox-3/close-active.png
+test -x /usr/share/themes/Elavo/firefox/install.sh
+# The theme names Roboto; without it GTK falls back to another family.
+test -f /usr/share/fonts/google-roboto/Roboto-Regular.ttf
+systemctl --global enable elavo-user-theme.service
 
 # Unlock the login keyring with the greetd password. Append after the last
 # line of each group so auto_start runs after pam_systemd. The package file
@@ -105,19 +131,23 @@ patch_pam /etc/pam.d/passwd password "password    optional      pam_gnome_keyrin
 
 /usr/libexec/gtkgreet-update-environments -w /etc/greetd/environments
 
-# Splash from elavo-visuals main. The frames are not stored in this repo.
-# The image build takes whatever main is when the build runs.
+# Splash from elavo-visuals main, bootscreen/elavo-new/elavo-boot. The images
+# are not stored in this repo. The image build takes whatever main is when
+# the build runs. The theme's .plymouth file names this install path.
 visuals_tmp=$(mktemp -d)
 curl -fsSL -o "${visuals_tmp}/visuals.tar.gz" \
     "https://github.com/elavo-io/elavo-visuals/archive/refs/heads/main.tar.gz"
 tar -xzf "${visuals_tmp}/visuals.tar.gz" -C "${visuals_tmp}"
-install -d /usr/share/plymouth/themes/elavo
-cp -a "${visuals_tmp}/elavo-visuals-main/bootscreen/elavo/." /usr/share/plymouth/themes/elavo/
+rm -rf /usr/share/plymouth/themes/elavo-boot
+install -d /usr/share/plymouth/themes/elavo-boot
+cp -a "${visuals_tmp}/elavo-visuals-main/bootscreen/elavo-new/elavo-boot/." \
+    /usr/share/plymouth/themes/elavo-boot/
 rm -rf "${visuals_tmp}"
-test -f /usr/share/plymouth/themes/elavo/elavo.plymouth
-test -f /usr/share/plymouth/themes/elavo/elavo.script
+test -f /usr/share/plymouth/themes/elavo-boot/elavo-boot.plymouth
+test -f /usr/share/plymouth/themes/elavo-boot/elavo-boot.script
+test -f /usr/share/plymouth/themes/elavo-boot/logo.png
 
-plymouth-set-default-theme elavo
+plymouth-set-default-theme elavo-boot
 # Same rebuild Universal Blue uses in ublue-os/main build_files/initramfs.sh.
 # --add ostree is required. Without it the theme is in the initramfs and
 # ostree-prepare-root is not, so boot reaches the splash and then emergency

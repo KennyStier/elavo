@@ -1,0 +1,15 @@
+[Unit]
+Description=Elavo theme for this account
+Documentation=file:///usr/share/themes/Elavo/README.md
+# Before the panel and dock start, so they and the first apps read the
+# user's GTK files. elavo-session.target waits for graphical-session-pre.
+PartOf=graphical-session.target
+Before=graphical-session-pre.target
+ConditionEnvironment=XDG_CURRENT_DESKTOP=elavo
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/elavo-user-theme
+
+[Install]
+WantedBy=graphical-session-pre.target

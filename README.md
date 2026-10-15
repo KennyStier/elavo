@@ -12,7 +12,7 @@ cosign verify --key cosign.pub ghcr.io/elavo-io/elavo
 
 The system name is Elavo. `build.sh` rewrites `/usr/lib/os-release` so `NAME` and `PRETTY_NAME` say Elavo, and `VERSION` is Fedora's `VERSION_ID` (44 while `base-main` tracks Fedora 44). `VERSION_ID`, `CPE_NAME`, and `OSTREE_VERSION` stay as the base image shipped them. `ID` stays `fedora` so the ISO build and the signed `EFI/fedora` bootloader keep working. There is no separate Elavo version series. Which build is installed is `bootc status`. Which Fedora generation that build tracks is `VERSION_ID`.
 
-The image boots to `greetd` and `gtkgreet`, then a labwc session with the Elavo top panel and dock from [elavo-shell](https://github.com/elavo-io/elavo-shell). The Containerfile's `shell` stage builds `elavo-shell` at the tag in `ELAVO_SHELL_REF` and installs the binaries and their systemd user units. Both units are enabled globally and are wanted by `graphical-session.target`. This image does not include settings, the control center, the Applications folder, the Elavo GTK theme, or NVIDIA drivers.
+The image boots to `greetd` and `gtkgreet`, then a labwc session with the Elavo top panel and dock from [elavo-shell](https://github.com/elavo-io/elavo-shell). The Containerfile's `shell` stage builds `elavo-shell` at the tag in `ELAVO_SHELL_REF` and installs the binaries and their systemd user units. Both units are enabled globally and are wanted by `graphical-session.target`. This image does not include settings, the control center, the Applications folder, or NVIDIA drivers.
 
 The greeter runs in `cage` because the Fedora `gtkgreet` package requires cage, sway, wayfire, or river. The logged-in session is labwc, started from `/usr/share/wayland-sessions/elavo.desktop` via `/usr/libexec/elavo-session`. labwc's autostart starts `elavo-session.target` after the Wayland socket exists. That target binds to `graphical-session.target`, which refuses a direct start, so the portals, the panel, the dock, and Lens come up. The wrapper stops `elavo-session.target` when labwc exits, which stops all of them. Fedora 44's labwc package does not ship that session file or `labwc-menu-generator`, so the image ships the session file and a short root menu: Terminal, Files, and Log Out. The panel's sun opens the Elavo menu (About, Sleep, Restart, Shut Down, Lock Screen, Log Out). Window buttons are on the left. Super+Space toggles Lens (`elavo-lens --toggle`), which searches applications, does arithmetic and unit conversion, and lists every application. Super+1 through Super+9 activate that dock slot (`elavo-dock --activate N`). Super+Return opens `foot`.
 
@@ -22,9 +22,19 @@ The panel's Elavo menu icon is `elavo-sun-symbolic`, fetched from `elavo-visuals
 
 Flathub is enabled from `/etc/flatpak/remotes.d`. Firefox (`org.mozilla.firefox`) is declared in `/usr/share/flatpak/preinstall.d`. `elavo-flatpak-preinstall.service` installs it after the network is up. A system Flatpak installed during the image build would land in `/var`, which bootc does not ship, so the browser is not on the image until that first online boot.
 
-The Plymouth theme is fetched during the image build from `elavo-visuals` commit `7e91404a9b4c84dd2c10cc6819cd6916a07a738e`, path `bootscreen/elavo/`. It is installed at `/usr/share/plymouth/themes/elavo` and set with `plymouth-set-default-theme -R`. The frames are not stored in this repository. The first boot should show that splash before the greeter.
+The Plymouth theme is fetched during the image build from `elavo-visuals` `main`, path `bootscreen/elavo-new/elavo-boot/`. It is installed at `/usr/share/plymouth/themes/elavo-boot`, set with `plymouth-set-default-theme elavo-boot`, and built into the initramfs with dracut. The frames are not stored in this repository. The first boot should show that splash before the greeter.
 
-Package names were checked against Fedora 44, the release `base-main` tracks. Fedora has no `qt6-wayland` package; Qt applications get `qt6-qtwayland`. The UI font is Inter (`rsms-inter-fonts`) and the terminal font is JetBrains Mono. The cursor theme is Adwaita. There is no Elavo labwc SSD theme yet, so title bars use labwc's default artwork with Elavo's button order.
+Package names were checked against Fedora 44, the release `base-main` tracks. Fedora has no `qt6-wayland` package; Qt applications get `qt6-qtwayland`. The UI font is Roboto (`google-roboto-fonts`), the face the GTK theme names, and the terminal font is JetBrains Mono. Inter (`rsms-inter-fonts`) is still installed but no longer the default. The cursor theme is Adwaita.
+
+The Elavo theme is fetched from `elavo-visuals` at the commit in `visuals_theme_rev` in `build_files/build.sh`, and installed at `/usr/share/themes/Elavo`. It is the default GTK theme (`settings.ini` and dconf), and `rc.xml` selects it for labwc's title bars. Some of it has to live in each account, so `elavo-user-theme.service` runs `/usr/libexec/elavo-user-theme` at every login, before the panel starts. That script:
+
+- Keeps a copy of the theme in `~/.local/share/themes`, refreshed when the image's copy changes, because Flatpak apps cannot read `/usr/share/themes`. A symlink there, or a copy without the image's stamp, is left alone.
+- Adds the libadwaita import and the accent file to `~/.config/gtk-4.0/gtk.css`, keeping anything already in it.
+- Sets the user Flatpak override that lets apps read the theme copy and the GTK settings, read-only.
+- Adds the Elavo window buttons to Firefox profiles.
+- Sets Chrome, Brave, and Chromium profiles that never chose a theme to GTK, while the browser is closed. On Classic they draw their own buttons.
+
+The theme names Roboto, and the image installs it and sets it in dconf.
 
 # image-template
 
