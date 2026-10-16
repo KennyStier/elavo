@@ -58,10 +58,10 @@ chmod 755 /etc/xdg/labwc/autostart \
     /usr/libexec/elavo-grim-region /usr/libexec/elavo-session \
     /usr/libexec/elavo-user-theme
 
-# Panel, dock, and Lens from elavo-shell (the shell stage in the Containerfile).
+# Folio's panel, dock, and Lens (the folio stage in the Containerfile).
 # They are wanted by graphical-session.target, which elavo-session.target
 # (started from labwc's autostart) pulls in.
-cp -a /ctx/shell_files/. /
+cp -a /ctx/folio_files/. /
 test -x /usr/bin/elavo-panel
 test -x /usr/bin/elavo-dock
 test -x /usr/bin/elavo-lens
