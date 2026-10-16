@@ -45,12 +45,15 @@ if [ -n "${lines}" ]; then
         mv "${gtk4}/gtk.css.new" "${gtk4}/gtk.css"
 fi
 
-# Read-only access for Flatpak apps to the theme copy and the GTK settings.
+# Read-only access for Flatpak apps to the theme copy and the GTK settings,
+# and to the panel's menu registrar so Qt apps can put their menus in the
+# panel.
 if command -v flatpak >/dev/null 2>&1; then
     flatpak override --user \
         --filesystem=xdg-data/themes:ro \
         --filesystem=xdg-config/gtk-3.0:ro \
-        --filesystem=xdg-config/gtk-4.0:ro || true
+        --filesystem=xdg-config/gtk-4.0:ro \
+        --talk-name=com.canonical.AppMenu.Registrar || true
 fi
 
 # Firefox reads userChrome.css and user.js only when a profile starts, and a

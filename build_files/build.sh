@@ -10,6 +10,8 @@ cp -avf "/ctx/system_files"/. /
 # qt6-wayland is not a Fedora package; the Wayland Qt platform is qt6-qtwayland.
 # gtkgreet requires cage, sway, wayfire, or river. cage hosts the greeter only.
 # NetworkManager, PipeWire, and WirePlumber are already on base-main.
+# fuse-libs is libfuse.so.2. AppImages built with the older runtime load it to
+# mount themselves; newer ones carry their own.
 
 dnf5 install -y \
     labwc \
@@ -44,7 +46,9 @@ dnf5 install -y \
     jetbrains-mono-fonts \
     adwaita-cursor-theme \
     gnome-keyring \
-    gnome-keyring-pam
+    gnome-keyring-pam \
+    xdg-user-dirs \
+    fuse-libs
 
 # No copy in /etc/skel: elavo-session runs labwc --merge-config, so these
 # system files stay in effect and ~/.config/labwc holds only user changes.
@@ -94,6 +98,14 @@ test -x /usr/share/themes/Elavo/firefox/install.sh
 # The theme names Roboto; without it GTK falls back to another family.
 test -f /usr/share/fonts/google-roboto/Roboto-Regular.ttf
 systemctl --global enable elavo-user-theme.service
+
+# Flatpak finds ~/Downloads (xdg-download) through ~/.config/user-dirs.dirs.
+# Without that file a Flatpak browser saves into a Downloads folder inside its
+# sandbox, which is lost when it quits. The package's autostart entry is
+# skipped under systemd; its user unit runs before graphical-session-pre.target,
+# which elavo-session.target wants.
+test -f /usr/lib/systemd/user/xdg-user-dirs.service
+systemctl --global enable xdg-user-dirs.service
 
 # Unlock the login keyring with the greetd password. Append after the last
 # line of each group so auto_start runs after pam_systemd. The package file
