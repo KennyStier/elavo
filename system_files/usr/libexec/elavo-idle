@@ -1,0 +1,35 @@
+#!/bin/sh
+# Lock the screen and turn the display off after the times System Settings'
+# Lock Screen pane saved in ~/.config/elavo/idle.conf:
+#
+#   [Idle]
+#   LockAfter=300
+#   DisplayOffAfter=600
+#
+# Seconds; 0 is never. A missing or unreadable value keeps the default.
+# System Settings restarts elavo-idle.service after a change.
+set -eu
+
+conf="${XDG_CONFIG_HOME:-${HOME}/.config}/elavo/idle.conf"
+lock_after=300
+display_off_after=600
+
+value() {
+    [ -r "${conf}" ] || return 0
+    sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\([0-9][0-9]*\)[[:space:]]*\$/\1/p" "${conf}" | tail -n 1
+}
+
+v=$(value LockAfter)
+[ -n "${v}" ] && lock_after=${v}
+v=$(value DisplayOffAfter)
+[ -n "${v}" ] && display_off_after=${v}
+
+lock='swaylock -f -c 000000'
+set -- -w lock "${lock}" before-sleep "${lock}"
+if [ "${lock_after}" -gt 0 ]; then
+    set -- "$@" timeout "${lock_after}" "${lock}"
+fi
+if [ "${display_off_after}" -gt 0 ]; then
+    set -- "$@" timeout "${display_off_after}" 'wlopm --off "*"' resume 'wlopm --on "*"'
+fi
+exec swayidle "$@"

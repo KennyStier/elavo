@@ -10,6 +10,11 @@ cp -avf "/ctx/system_files"/. /
 # qt6-wayland is not a Fedora package; the Wayland Qt platform is qt6-qtwayland.
 # gtkgreet requires cage, sway, wayfire, or river. cage hosts the greeter only.
 # NetworkManager, PipeWire, and WirePlumber are already on base-main.
+# kanshi applies the display arrangement System Settings saves. mate-polkit
+# is the password prompt for pkexec and polkit D-Bus calls; polkit-gnome is
+# not packaged for Fedora 44. accountsservice, polkit, and pciutils (lspci,
+# for About's graphics row) are on base-main today; they are listed so that
+# stays true.
 # fuse-libs is libfuse.so.2. AppImages built with the older runtime load it to
 # mount themselves; newer ones carry their own.
 
@@ -48,7 +53,12 @@ dnf5 install -y \
     gnome-keyring \
     gnome-keyring-pam \
     xdg-user-dirs \
-    fuse-libs
+    fuse-libs \
+    kanshi \
+    mate-polkit \
+    accountsservice \
+    polkit \
+    pciutils
 
 # No copy in /etc/skel: elavo-session runs labwc --merge-config, so these
 # system files stay in effect and ~/.config/labwc holds only user changes.
@@ -56,7 +66,7 @@ install -d /etc/xdg/labwc
 cp -a /ctx/config/labwc/. /etc/xdg/labwc/
 chmod 755 /etc/xdg/labwc/autostart \
     /usr/libexec/elavo-grim-region /usr/libexec/elavo-session \
-    /usr/libexec/elavo-user-theme
+    /usr/libexec/elavo-user-theme /usr/libexec/elavo-idle
 
 # Folio's panel, dock, and Lens (the folio stage in the Containerfile).
 # They are wanted by graphical-session.target, which elavo-session.target
@@ -66,6 +76,22 @@ test -x /usr/bin/elavo-panel
 test -x /usr/bin/elavo-dock
 test -x /usr/bin/elavo-lens
 systemctl --global enable elavo-panel.service elavo-dock.service elavo-lens.service
+
+# System Settings (the system-settings stage). The panel's System Settings…
+# item and the dock's Dock Settings… open it. Its helper runs updates and
+# the lid setting as root through pkexec; the policy names the helper's
+# path. Idle locking, password prompts, and the saved display arrangement
+# are user services it relies on. kanshi's drop-in keeps it stopped until
+# the first arrangement is saved.
+cp -a /ctx/system_settings_files/. /
+test -x /usr/bin/elavo-system-settings
+test -x /usr/libexec/elavo-system-settings-helper
+test -f /usr/share/applications/io.elavo.SystemSettings.desktop
+test -f /usr/share/polkit-1/actions/io.elavo.SystemSettings.policy
+test -x /usr/libexec/polkit-mate-authentication-agent-1
+test -f /usr/lib/systemd/user/kanshi.service
+test -x /usr/bin/lspci
+systemctl --global enable elavo-idle.service elavo-polkit-agent.service kanshi.service
 
 # The panel's Elavo menu icon. Pinned, unlike the splash: only the splash
 # follows elavo-visuals main.

@@ -94,4 +94,15 @@
       <action name="Execute" command="/usr/libexec/elavo-grim-region" />
     </keybind>
   </keyboard>
+
+  <!-- Defaults for every pointer. System Settings' Mouse and Trackpad panes
+       write the non-touch and touchpad categories in ~/.config/labwc/rc.xml,
+       which take over from these for that kind of device. -->
+  <libinput>
+    <device category="default">
+      <naturalScroll>yes</naturalScroll>
+      <tap>yes</tap>
+      <disableWhileTyping>yes</disableWhileTyping>
+    </device>
+  </libinput>
 </labwc_config>

@@ -24,10 +24,6 @@ dbus-update-activation-environment --systemd ${vars}
 systemctl --user start elavo-session.target
 
 wl-paste --watch cliphist store >/dev/null 2>&1 &
-# "lock" handles loginctl lock-session, which the Elavo menu's Lock Screen uses.
-swayidle -w \
-    lock 'swaylock -f -c 000000' \
-    timeout 300 'swaylock -f -c 000000' \
-    timeout 600 'wlopm --off *' \
-    resume 'wlopm --on *' \
-    before-sleep 'swaylock -f -c 000000' >/dev/null 2>&1 &
+# Locking when idle and on loginctl lock-session (the Elavo menu's Lock
+# Screen) is elavo-idle.service, which elavo-session.target starts. Its
+# times come from System Settings' Lock Screen pane.

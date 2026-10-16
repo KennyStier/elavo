@@ -10,12 +10,26 @@ RUN git clone --depth 1 --branch "${ELAVO_FOLIO_REF}" \
 WORKDIR /src
 RUN cargo build --release --locked && DESTDIR=/out scripts/install
 
+# System Settings, built the same way. Its Desktop & Dock pane embeds Folio's
+# dock settings page, which Cargo fetches at the tag in its Cargo.toml.
+# main until the first tag; pin it like Folio after that.
+FROM registry.fedoraproject.org/fedora:44 AS system-settings
+ARG ELAVO_SYSTEM_SETTINGS_REF=main
+RUN dnf5 install -y git gcc pkgconf-pkg-config rust cargo \
+        gtk4-devel gtk4-layer-shell-devel wayland-devel pulseaudio-libs-devel && \
+    dnf5 clean all
+RUN git clone --depth 1 --branch "${ELAVO_SYSTEM_SETTINGS_REF}" \
+        https://github.com/elavo-io/elavo-system-settings.git /src
+WORKDIR /src
+RUN cargo build --release --locked && DESTDIR=/out scripts/install
+
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
 COPY config /config
 COPY --from=folio /out /folio_files
+COPY --from=system-settings /out /system_settings_files
 
 # Base Image
 FROM ghcr.io/ublue-os/base-main:latest
