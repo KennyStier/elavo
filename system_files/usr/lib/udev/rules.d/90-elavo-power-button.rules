@@ -1,0 +1,3 @@
+# Let the logged-in session read the ACPI power button. It is not added to
+# the seat, so labwc does not treat the button as a keyboard.
+ACTION=="add", SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Power Button", TAG+="uaccess", RUN{builtin}+="uaccess"

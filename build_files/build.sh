@@ -66,7 +66,9 @@ install -d /etc/xdg/labwc
 cp -a /ctx/config/labwc/. /etc/xdg/labwc/
 chmod 755 /etc/xdg/labwc/autostart \
     /usr/libexec/elavo-grim-region /usr/libexec/elavo-session \
-    /usr/libexec/elavo-user-theme /usr/libexec/elavo-idle
+    /usr/libexec/elavo-user-theme /usr/libexec/elavo-idle \
+    /usr/libexec/elavo-panel-action /usr/libexec/elavo-power-button
+python3 /usr/libexec/elavo-power-button --self-test
 
 # Folio's panel, dock, and Lens (the folio stage in the Containerfile).
 # They are wanted by graphical-session.target, which elavo-session.target
@@ -91,7 +93,8 @@ test -f /usr/share/polkit-1/actions/io.elavo.SystemSettings.policy
 test -x /usr/libexec/polkit-mate-authentication-agent-1
 test -f /usr/lib/systemd/user/kanshi.service
 test -x /usr/bin/lspci
-systemctl --global enable elavo-idle.service elavo-polkit-agent.service kanshi.service
+systemctl --global enable elavo-idle.service elavo-polkit-agent.service \
+    elavo-power-button.service kanshi.service
 
 # The panel's Elavo menu icon. Pinned, unlike the splash: only the splash
 # follows elavo-visuals main.

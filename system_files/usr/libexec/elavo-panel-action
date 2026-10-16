@@ -1,0 +1,20 @@
+#!/bin/sh
+# Run one action of the panel. Shut Down, Log Out, and Lock are implemented
+# there. The power button and the labwc keybinds call this so a change to
+# those questions is a change in one place.
+set -eu
+
+action=${1:-}
+case "$action" in
+    shut-down|lock|log-out) ;;
+    *)
+        echo "elavo-panel-action: expected shut-down, lock, or log-out" >&2
+        exit 1
+        ;;
+esac
+
+exec gdbus call --session \
+    --dest io.elavo.Panel \
+    --object-path /io/elavo/Panel \
+    --method org.gtk.Actions.Activate \
+    "$action" "[]" "{}"

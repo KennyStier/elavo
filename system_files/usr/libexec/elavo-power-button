@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+"""Power button.
+
+A press while the screen is on and the session is unlocked asks the panel
+to show its Shut Down question, the same one as the sun menu. A press while
+the screen is off, the session is locked, or the machine has just woken
+turns the screen on.
+
+Super+Ctrl+Q and Super+Shift+Q are labwc keybinds that call the panel too,
+through elavo-panel-action. Holding the button for several seconds is the
+firmware's power-off and cannot be changed here.
+"""
+
+import glob
+import os
+import select
+import struct
+import subprocess
+import sys
+import time
+
+# The press that woke the machine arrives just after resume.
+RESUME_GRACE_S = 2.0
+KEY_POWER = 116
+EV_KEY = 0x01
+EVENT = struct.Struct("llHHi")
+PANEL_ACTION = "/usr/libexec/elavo-panel-action"
+POWER_BUTTON_NAME = "Power Button"
+
+
+def decide(screen_on, locked, resume_grace):
+    """What a press does. State is at key down."""
+    if resume_grace or locked or not screen_on:
+        return "wake"
+    return "shutdown"
+
+
+def parse_sleep(line):
+    """logind PrepareForSleep: True is going to sleep, False is waking."""
+    marker = "PrepareForSleep"
+    if marker not in line:
+        return None
+    tail = line.split(marker, 1)[1]
+    if "false" in tail:
+        return False
+    if "true" in tail:
+        return True
+    return None
+
+
+def key_downs(blob):
+    """KEY_POWER presses in one read. The release arrives in the same moment."""
+    downs = 0
+    while len(blob) >= EVENT.size:
+        _sec, _usec, typ, code, value = EVENT.unpack_from(blob)
+        blob = blob[EVENT.size :]
+        if typ == EV_KEY and code == KEY_POWER and value == 1:
+            downs += 1
+    return downs
+
+
+def self_test():
+    assert decide(True, False, False) == "shutdown"
+    assert decide(False, False, False) == "wake"
+    assert decide(True, True, False) == "wake"
+    assert decide(True, False, True) == "wake"
+    assert parse_sleep("PrepareForSleep (true)") is True
+    assert parse_sleep("PrepareForSleep (false)") is False
+    assert parse_sleep("Monitoring signals") is None
+    press = EVENT.pack(0, 0, EV_KEY, KEY_POWER, 1)
+    release = EVENT.pack(0, 0, EV_KEY, KEY_POWER, 0)
+    assert key_downs(press + release) == 1
+    assert key_downs(release) == 0
+    assert EVENT.size == 24
+    print("self-test ok")
+
+
+def log(message):
+    print(f"elavo-power-button: {message}", flush=True)
+
+
+def session_id():
+    user = os.environ.get("USER") or "elavo"
+    result = subprocess.run(
+        ["loginctl", "show-user", user, "-p", "Display", "--value"],
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def screen_on():
+    result = subprocess.run(["wlopm"], capture_output=True, text=True)
+    lines = [line.split() for line in result.stdout.splitlines() if line.split()]
+    if not lines:
+        return True
+    return any(len(parts) >= 2 and parts[-1] == "on" for parts in lines)
+
+
+def session_locked():
+    sid = session_id()
+    if sid:
+        result = subprocess.run(
+            ["loginctl", "show-session", sid, "-p", "LockedHint", "--value"],
+            capture_output=True,
+            text=True,
+        )
+        if result.stdout.strip() == "yes":
+            return True
+    # swaylock does not always set the hint.
+    return subprocess.run(["pgrep", "-x", "swaylock"], capture_output=True).returncode == 0
+
+
+def wake_screen():
+    subprocess.run(["wlopm", "--on", "*"], capture_output=True)
+
+
+def ask_shutdown():
+    log("ask to shut down")
+    result = subprocess.run(
+        [PANEL_ACTION, "shut-down"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        log(detail or "the panel did not show shut down")
+
+
+def _ioctl(fd, number, size, buf):
+    import fcntl
+
+    request = 2 << 30 | size << 16 | ord("E") << 8 | number
+    fcntl.ioctl(fd, request, buf)
+
+
+def device_name(fd):
+    buf = bytearray(256)
+    _ioctl(fd, 0x06, len(buf), buf)
+    return buf.split(b"\x00", 1)[0].decode(errors="replace")
+
+
+def has_power_key(fd):
+    nbytes = (KEY_POWER // 8) + 1
+    buf = bytearray(nbytes)
+    _ioctl(fd, 0x20 + EV_KEY, nbytes, buf)
+    return bool(buf[KEY_POWER // 8] & (1 << (KEY_POWER % 8)))
+
+
+def open_power_buttons():
+    """Event devices named Power Button. Other input devices are left alone."""
+    opened = []
+    denied = False
+    for path in sorted(glob.glob("/dev/input/event*")):
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+        except PermissionError:
+            denied = True
+            continue
+        except OSError:
+            continue
+        try:
+            if device_name(fd) == POWER_BUTTON_NAME and has_power_key(fd):
+                opened.append(fd)
+                continue
+        except OSError:
+            pass
+        os.close(fd)
+    return opened, denied
+
+
+class SleepWatch:
+    """logind's PrepareForSleep signal, as lines from gdbus."""
+
+    def __init__(self):
+        self.proc = None
+        self.fd = None
+        self.buf = b""
+        self.start()
+
+    def start(self):
+        self.proc = subprocess.Popen(
+            [
+                "stdbuf",
+                "-oL",
+                "gdbus",
+                "monitor",
+                "--system",
+                "--dest",
+                "org.freedesktop.login1",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        self.fd = self.proc.stdout.fileno()
+        os.set_blocking(self.fd, False)
+        self.buf = b""
+
+    def lines(self):
+        try:
+            chunk = os.read(self.fd, 4096)
+        except BlockingIOError:
+            return []
+        if not chunk:
+            self.restart()
+            return []
+        self.buf += chunk
+        lines = []
+        while b"\n" in self.buf:
+            line, self.buf = self.buf.split(b"\n", 1)
+            lines.append(line.decode(errors="replace"))
+        return lines
+
+    def restart(self):
+        if self.proc is not None:
+            self.proc.kill()
+            self.proc.wait()
+        log("sleep monitor stopped; starting it again")
+        self.start()
+
+
+def run():
+    buttons = []
+    buffers = {}
+    denied_logged = False
+    resume_until = 0.0
+    sleep = SleepWatch()
+
+    while True:
+        if not buttons:
+            buttons, denied = open_power_buttons()
+            buffers = {fd: b"" for fd in buttons}
+            if not buttons:
+                if denied and not denied_logged:
+                    log("the power button is not readable yet")
+                    denied_logged = True
+                time.sleep(2)
+                continue
+            for fd in buttons:
+                log(f"watching {device_name(fd)}")
+
+        readable, _, _ = select.select(buttons + [sleep.fd], [], [], None)
+        if sleep.fd in readable:
+            for line in sleep.lines():
+                state = parse_sleep(line)
+                if state is True:
+                    resume_until = 0.0
+                elif state is False:
+                    resume_until = time.monotonic() + RESUME_GRACE_S
+                    log("resumed; ignoring the wake press")
+        for fd in list(readable):
+            if fd == sleep.fd:
+                continue
+            try:
+                chunk = os.read(fd, 1024)
+            except BlockingIOError:
+                continue
+            except OSError as error:
+                log(f"power button closed: {error}")
+                os.close(fd)
+                buttons.remove(fd)
+                buffers.pop(fd, None)
+                continue
+            if not chunk:
+                os.close(fd)
+                buttons.remove(fd)
+                buffers.pop(fd, None)
+                continue
+            blob = buffers.get(fd, b"") + chunk
+            whole = len(blob) - (len(blob) % EVENT.size)
+            presses = key_downs(blob[:whole])
+            buffers[fd] = blob[whole:]
+            for _press in range(presses):
+                if decide(screen_on(), session_locked(), time.monotonic() < resume_until) == "wake":
+                    log("wake")
+                    wake_screen()
+                else:
+                    ask_shutdown()
+
+
+def main():
+    if "--self-test" in sys.argv:
+        self_test()
+        return
+    run()
+
+
+if __name__ == "__main__":
+    main()
