@@ -28,12 +28,18 @@ fi
 
 # libadwaita apps do not load gtk-theme-name; they read the user's
 # gtk-4.0/gtk.css. @import has to come before any rule, so missing lines go
-# at the top. elavo-accent.css is where Settings writes the accent.
+# at the top. elavo-accent.css only points at the accent variable. The
+# chosen color lives in the user theme, which Settings reloads by name.
 gtk4="${config}/gtk-4.0"
 mkdir -p "${gtk4}"
-[ -e "${gtk4}/elavo-accent.css" ] ||
-    printf '%s\n' '/* The accent chosen in Settings. Empty: the theme default. */' \
-        > "${gtk4}/elavo-accent.css"
+pointer=':root,
+toolbarview {
+  --accent-bg-color: var(--elavo-user-accent, var(--elavo-accent-blue));
+  --accent-fg-color: var(--elavo-user-accent-fg, var(--elavo-accent-blue-fg));
+}'
+if ! grep -qs -- '--elavo-user-accent' "${gtk4}/elavo-accent.css" 2>/dev/null; then
+    printf '%s\n' "$pointer" > "${gtk4}/elavo-accent.css"
+fi
 lines=""
 grep -qs 'Elavo/gtk-4.0/libadwaita.css' "${gtk4}/gtk.css" ||
     lines="@import url(\"file://${copy}/gtk-4.0/libadwaita.css\");"

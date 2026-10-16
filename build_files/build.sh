@@ -96,27 +96,27 @@ test -x /usr/bin/lspci
 systemctl --global enable elavo-idle.service elavo-polkit-agent.service \
     elavo-power-button.service kanshi.service
 
-# The panel's Elavo menu icon. Pinned, unlike the splash: only the splash
-# follows elavo-visuals main.
-visuals_icon_rev=95273b04bcde852d81f0811d9123e9c51195a594
-install -d /usr/share/icons/hicolor/scalable/apps
-curl -fsSL -o /usr/share/icons/hicolor/scalable/apps/elavo-sun-symbolic.svg \
-    "https://raw.githubusercontent.com/elavo-io/elavo-visuals/${visuals_icon_rev}/icons/unsorted/symbol/elavo-sun.svg"
-gtk-update-icon-cache -f /usr/share/icons/hicolor
-
-# The Elavo theme from elavo-visuals, pinned: GTK4, libadwaita, the GTK3
-# stopgap, labwc's title bars, and Firefox's window buttons. The stamp tells
-# elavo-user-theme which build each account's copy came from.
-visuals_theme_rev=4de4bc939ffa4b15a1806f2b075f4c53b854be53
+# The Elavo themes from elavo-visuals, pinned. Only the splash follows main.
+# The GTK theme covers GTK4, libadwaita, the GTK3 stopgap, labwc's title
+# bars, and Firefox's window buttons. The icon theme carries the panel's sun
+# and Elavo's app icons, and inherits Adwaita for everything else. The stamp
+# tells elavo-user-theme which build each account's copy came from.
+visuals_theme_rev=821d0f6e2d4dae56157cf6dbba1ea3c1df896755
 theme_tmp=$(mktemp -d)
 curl -fsSL -o "${theme_tmp}/visuals.tar.gz" \
     "https://github.com/elavo-io/elavo-visuals/archive/${visuals_theme_rev}.tar.gz"
 tar -xzf "${theme_tmp}/visuals.tar.gz" -C "${theme_tmp}" \
-    "elavo-visuals-${visuals_theme_rev}/themes/Elavo"
-install -d /usr/share/themes
-rm -rf /usr/share/themes/Elavo
+    "elavo-visuals-${visuals_theme_rev}/themes/Elavo" \
+    "elavo-visuals-${visuals_theme_rev}/themes/elavo-icons"
+install -d /usr/share/themes /usr/share/icons
+rm -rf /usr/share/themes/Elavo /usr/share/icons/Elavo
 cp -a "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/themes/Elavo" /usr/share/themes/Elavo
+cp -a "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/themes/elavo-icons" /usr/share/icons/Elavo
 rm -rf "${theme_tmp}"
+gtk-update-icon-cache -f /usr/share/icons/Elavo
+test -f /usr/share/icons/Elavo/index.theme
+test -f /usr/share/icons/Elavo/symbolic/apps/elavo-sun-symbolic.svg
+test -f /usr/share/icons/Elavo/512x512/apps/io.elavo.SystemSettings.png
 printf '%s\n' "${visuals_theme_rev}" > /usr/share/themes/Elavo/.elavo-image
 test -f /usr/share/themes/Elavo/gtk-4.0/gtk.css
 test -f /usr/share/themes/Elavo/gtk-4.0/libadwaita.css
