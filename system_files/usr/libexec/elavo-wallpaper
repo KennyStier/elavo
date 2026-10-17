@@ -1,0 +1,176 @@
+#!/bin/sh
+# Paint the desktop picture and switch a dynamic wallpaper's light and dark
+# versions when Appearance changes.
+#
+# System Settings writes ~/.config/elavo/wallpaper.conf:
+#
+#   [Wallpaper]
+#   Kind=dynamic|custom
+#   Id=wavy-blue
+#   Custom=/path/to/a picture.jpg
+#   Variant=automatic|light|dark
+#
+# Dynamic pictures live under /usr/share/backgrounds/elavo/ or
+# ~/.local/share/backgrounds/elavo/. A wallpaper is a directory named by id.
+# It may sit in a parent folder, as dynamic-wallpapers/dynamic-blue/ does.
+# Its pictures are light.jpg or blue-light.jpg, and the same for dark.
+# A thumb file is only for the picker. Directories named source, and files
+# with source in the name, are artwork masters and are not installed.
+#
+# The picture is
+# always scaled to cover the screen (swaybg's fill mode). A missing dark or
+# light file uses the other one. Automatic follows
+# org.gnome.desktop.interface color-scheme. Settings restarts this service
+# after a change; this process also watches the color scheme.
+set -eu
+
+conf="${XDG_CONFIG_HOME:-${HOME}/.config}/elavo/wallpaper.conf"
+user_root="${XDG_DATA_HOME:-${HOME}/.local/share}/backgrounds/elavo"
+sys_root=/usr/share/backgrounds/elavo
+bg_pid=""
+
+stop_bg() {
+    if [ -n "${bg_pid}" ]; then
+        kill "${bg_pid}" 2>/dev/null || true
+        wait "${bg_pid}" 2>/dev/null || true
+        bg_pid=""
+    fi
+}
+
+value() {
+    [ -r "${conf}" ] || return 0
+    sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "${conf}" | tail -n 1
+}
+
+file_for_role() {
+    dir=$1
+    role=$2
+    for ext in jpg jpeg png webp; do
+        exact="${dir}/${role}.${ext}"
+        if [ -f "${exact}" ]; then
+            printf '%s\n' "${exact}"
+            return 0
+        fi
+        for file in "${dir}"/*-"${role}"."${ext}"; do
+            [ -f "${file}" ] || continue
+            base=$(basename "${file}")
+            case "${base}" in
+                *source*) continue ;;
+            esac
+            printf '%s\n' "${file}"
+            return 0
+        done
+    done
+    return 1
+}
+
+find_dir() {
+    id=$1
+    for root in "${user_root}" "${sys_root}"; do
+        [ -d "${root}" ] || continue
+        if [ -d "${root}/${id}" ]; then
+            printf '%s\n' "${root}/${id}"
+            return 0
+        fi
+        found=$(find -H "${root}" -type d -name "${id}" ! -path '*/source/*' ! -name source -print -quit 2>/dev/null || true)
+        if [ -n "${found}" ]; then
+            printf '%s\n' "${found}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+find_role() {
+    id=$1
+    role=$2
+    dir=$(find_dir "${id}") || return 1
+    file_for_role "${dir}" "${role}"
+}
+
+first_id() {
+    list=$(mktemp)
+    for root in "${user_root}" "${sys_root}"; do
+        [ -d "${root}" ] || continue
+        find -H "${root}" -type d ! -path '*/source/*' ! -name source -print 2>/dev/null \
+            | while read -r dir; do
+                id=$(basename "${dir}")
+                case "${id}" in
+                    .*|source) continue ;;
+                esac
+                if file_for_role "${dir}" light >/dev/null 2>&1 || file_for_role "${dir}" dark >/dev/null 2>&1; then
+                    printf '%s\n' "${id}" >> "${list}"
+                fi
+            done
+    done
+    sort -u "${list}" | head -n 1
+    rm -f "${list}"
+}
+
+resolve() {
+    kind=$(value Kind)
+    id=$(value Id)
+    custom=$(value Custom)
+    variant=$(value Variant)
+    [ -n "${kind}" ] || kind=dynamic
+    [ -n "${variant}" ] || variant=automatic
+
+    if [ "${kind}" = "custom" ] && [ -n "${custom}" ] && [ -f "${custom}" ]; then
+        printf '%s\n' "${custom}"
+        return 0
+    fi
+
+    [ -n "${id}" ] || id=$(first_id || true)
+    [ -n "${id}" ] || return 1
+
+    want=light
+    if [ "${variant}" = "dark" ]; then
+        want=dark
+    elif [ "${variant}" != "light" ]; then
+        scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || true)
+        case "${scheme}" in
+            *prefer-dark*) want=dark ;;
+        esac
+    fi
+
+    if pic=$(find_role "${id}" "${want}"); then
+        printf '%s\n' "${pic}"
+        return 0
+    fi
+    other=light
+    [ "${want}" = "light" ] && other=dark
+    find_role "${id}" "${other}"
+}
+
+apply() {
+    stop_bg
+    # A previous run may have left a wallpaper process behind.
+    pkill -x swaybg 2>/dev/null || true
+    if pic=$(resolve); then
+        swaybg -o '*' -i "${pic}" -m fill >/dev/null 2>&1 &
+        bg_pid=$!
+    fi
+}
+
+if [ "${1:-}" = "--print" ]; then
+    resolve
+    exit 0
+fi
+
+fifo=$(mktemp -u)
+mkfifo "${fifo}"
+cleanup() {
+    stop_bg
+    if [ -n "${mon_pid:-}" ]; then
+        kill "${mon_pid}" 2>/dev/null || true
+    fi
+    rm -f "${fifo}"
+}
+trap cleanup EXIT INT TERM
+
+apply
+gsettings monitor org.gnome.desktop.interface color-scheme > "${fifo}" 2>/dev/null &
+mon_pid=$!
+while read -r _; do
+    apply
+done < "${fifo}"

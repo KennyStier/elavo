@@ -57,6 +57,11 @@ FROM ghcr.io/ublue-os/base-main:latest
 ### MODIFICATIONS
 ## make modifications desired in your image and install packages by modifying the build.sh script
 ## the following RUN directive does all the things required to run "build.sh" as recommended.
+## ELAVO_GIT_REVISION is the image repository commit this build came from.
+## Software Update uses it for the list of changes. It is not kept as an
+## environment variable; build.sh writes it into the image.
+
+ARG ELAVO_GIT_REVISION=
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \

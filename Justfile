@@ -100,6 +100,16 @@ build $target_image=image_name $tag=default_tag:
 
     BUILD_ARGS=()
     LABELS=()
+    # Full commit, including when the tree is dirty, so an image can say
+    # which revision it was built from. A dirty tree is marked and is not
+    # used as a changelog endpoint.
+    if REVISION="$(git rev-parse HEAD 2>/dev/null)" && [[ -n "${REVISION}" ]]; then
+        if [[ -n "$(git status -s)" ]]; then
+            REVISION="${REVISION}-dirty"
+        fi
+        BUILD_ARGS+=("--build-arg" "ELAVO_GIT_REVISION=${REVISION}")
+        LABELS+=("--label" "org.opencontainers.image.revision=${REVISION}")
+    fi
     if [[ -z "$(git status -s)" ]]; then
         GIT_SHA=$(git rev-parse --short HEAD)
         LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/{{ image_name }}/${GIT_SHA}/README.md")
@@ -173,6 +183,17 @@ ostree-rechunk $target_image=image_name $tag=default_tag:
 
     GRAPHROOT="$(podman info --format '{{ '{{.Store.GraphRoot}}' }}')"
 
+    # Rechunk builds a new image config and drops the labels from `just build`.
+    # Put the revision back, or Software Update cannot name the new build
+    # before it is downloaded.
+    LABEL_ARGS=()
+    if REVISION="$(git rev-parse HEAD 2>/dev/null)" && [[ -n "${REVISION}" ]]; then
+        if [[ -n "$(git status -s)" ]]; then
+            REVISION="${REVISION}-dirty"
+        fi
+        LABEL_ARGS+=(--label "org.opencontainers.image.revision=${REVISION}")
+    fi
+
     podman run --rm --pull=never --privileged \
       --mount=type=image,src="${target_image}:${tag}",target=/rpm-ostree \
       --mount=type=bind,src=${GRAPHROOT},target=/run/host-container-storage,rw \
@@ -184,6 +205,7 @@ ostree-rechunk $target_image=image_name $tag=default_tag:
       --format-version=2 \
       --bootc \
       --rootfs /rpm-ostree \
+      "${LABEL_ARGS[@]}" \
       --output "containers-storage:[overlay@/run/host-container-storage+/run/rpm-ostree-storage]localhost/${target_image}:${tag}"
 
 # Generate Default Tag

@@ -36,6 +36,7 @@ dnf5 install -y \
     slurp \
     swaylock \
     swayidle \
+    swaybg \
     wlr-randr \
     wlopm \
     bluez \
@@ -67,8 +68,11 @@ cp -a /ctx/config/labwc/. /etc/xdg/labwc/
 chmod 755 /etc/xdg/labwc/autostart \
     /usr/libexec/elavo-grim-region /usr/libexec/elavo-session \
     /usr/libexec/elavo-user-theme /usr/libexec/elavo-idle \
+    /usr/libexec/elavo-wallpaper \
     /usr/libexec/elavo-panel-action /usr/libexec/elavo-power-button
 python3 /usr/libexec/elavo-power-button --self-test
+test -x /usr/bin/swaybg
+test -x /usr/libexec/elavo-wallpaper
 
 # Folio's panel, dock, and Lens (the folio stage in the Containerfile).
 # They are wanted by graphical-session.target, which elavo-session.target
@@ -93,15 +97,15 @@ test -f /usr/share/polkit-1/actions/io.elavo.SystemSettings.policy
 test -x /usr/libexec/polkit-mate-authentication-agent-1
 test -f /usr/lib/systemd/user/kanshi.service
 test -x /usr/bin/lspci
-systemctl --global enable elavo-idle.service elavo-polkit-agent.service \
-    elavo-power-button.service kanshi.service
+systemctl --global enable elavo-idle.service elavo-wallpaper.service \
+    elavo-polkit-agent.service elavo-power-button.service kanshi.service
 
 # The Elavo themes from elavo-visuals, pinned. Only the splash follows main.
 # The GTK theme covers GTK4, libadwaita, the GTK3 stopgap, labwc's title
 # bars, and Firefox's window buttons. The icon theme carries the panel's sun
 # and Elavo's app icons, and inherits Adwaita for everything else. The stamp
 # tells elavo-user-theme which build each account's copy came from.
-visuals_theme_rev=821d0f6e2d4dae56157cf6dbba1ea3c1df896755
+visuals_theme_rev=3823d96e67a34d6de86bf59b903641f1757b8af5
 theme_tmp=$(mktemp -d)
 curl -fsSL -o "${theme_tmp}/visuals.tar.gz" \
     "https://github.com/elavo-io/elavo-visuals/archive/${visuals_theme_rev}.tar.gz"
@@ -112,6 +116,21 @@ install -d /usr/share/themes /usr/share/icons
 rm -rf /usr/share/themes/Elavo /usr/share/icons/Elavo
 cp -a "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/themes/Elavo" /usr/share/themes/Elavo
 cp -a "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/themes/elavo-icons" /usr/share/icons/Elavo
+# Dynamic wallpapers, when this visuals pin has them. Pictures may be named
+# light.jpg or blue-light.jpg, and may sit under dynamic-wallpapers/. The
+# source directory is the artwork master and is not installed.
+if tar -tzf "${theme_tmp}/visuals.tar.gz" | grep -q '/assets/wallpaper/'; then
+    tar -xzf "${theme_tmp}/visuals.tar.gz" -C "${theme_tmp}" \
+        --wildcards "elavo-visuals-${visuals_theme_rev}/assets/wallpaper"
+    wallpaper_src="${theme_tmp}/elavo-visuals-${visuals_theme_rev}/assets/wallpaper"
+    install -d /usr/share/backgrounds/elavo
+    find "${wallpaper_src}" -type d -name source -prune -o -type f ! -name '*source*' -print \
+        | while read -r file; do
+            rel=${file#"${wallpaper_src}/"}
+            install -D -m 0644 "${file}" "/usr/share/backgrounds/elavo/${rel}"
+        done
+    test -n "$(find /usr/share/backgrounds/elavo -type f -print -quit)"
+fi
 rm -rf "${theme_tmp}"
 gtk-update-icon-cache -f /usr/share/icons/Elavo
 test -f /usr/share/icons/Elavo/index.theme
@@ -232,7 +251,7 @@ systemctl set-default graphical.target
 osrel=/usr/lib/os-release
 test -f "${osrel}"
 test -L /etc/os-release
-elavo_version=0.1.0
+elavo_version=0.1.3
 version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}" | tr -d "\"'")
 [[ "${version_id}" =~ ^[0-9]+$ ]]
 kept_version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}")
@@ -286,3 +305,9 @@ test -L /etc/os-release
 
 test -f /usr/lib/fedora-release
 printf 'Elavo release %s\n' "${elavo_version}" > /usr/lib/fedora-release
+
+# The image repository commit. Software Update compares this with the
+# revision label on the update and lists the commits in between.
+if [[ -n "${ELAVO_GIT_REVISION:-}" ]]; then
+    printf '%s\n' "${ELAVO_GIT_REVISION}" > /usr/lib/elavo-image-revision
+fi

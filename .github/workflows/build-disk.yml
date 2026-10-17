@@ -77,6 +77,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # New installs follow stable once that tag exists. Until then they
+      # follow latest, which is the only tag a build publishes on its own.
+      - name: Use stable when that release exists
+        run: |
+          set -eu
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
+            "https://ghcr.io/v2/${{ github.repository_owner }}/${IMAGE_NAME}/manifests/stable")
+          if [[ "${code}" == "200" ]]; then
+            echo "DEFAULT_TAG=stable" >> "${GITHUB_ENV}"
+            sed -i 's#elavo:latest#elavo:stable#' \
+              disk_config/iso.toml disk_config/iso-kde.toml disk_config/iso-gnome.toml
+          fi
+
       - name: Login to GHCR
         run: |
           if ! command -v podman >/dev/null; then
