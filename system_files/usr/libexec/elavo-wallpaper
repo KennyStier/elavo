@@ -142,6 +142,18 @@ resolve() {
     find_role "${id}" "${other}"
 }
 
+# The panel reads this file to pick white or black for its text. It holds
+# the picture on screen, or nothing when no picture is shown.
+state_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/elavo"
+state="${state_dir}/wallpaper"
+
+record() {
+    mkdir -p "${state_dir}"
+    tmp="${state}.tmp.$$"
+    printf '%s' "$1" > "${tmp}"
+    mv -f "${tmp}" "${state}"
+}
+
 apply() {
     stop_bg
     # A previous run may have left a wallpaper process behind.
@@ -149,6 +161,9 @@ apply() {
     if pic=$(resolve); then
         swaybg -o '*' -i "${pic}" -m fill >/dev/null 2>&1 &
         bg_pid=$!
+        record "${pic}"
+    else
+        record ""
     fi
 }
 
