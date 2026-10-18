@@ -105,7 +105,7 @@ systemctl --global enable elavo-idle.service elavo-wallpaper.service \
 # bars, and Firefox's window buttons. The icon theme carries the panel's sun
 # and Elavo's app icons, and inherits Adwaita for everything else. The stamp
 # tells elavo-user-theme which build each account's copy came from.
-visuals_theme_rev=1e2b2105387334d236688aabd0cab4f2d91ecdea
+visuals_theme_rev=3e2e8913c6472166ebca82f70d837a8c2266c561
 theme_tmp=$(mktemp -d)
 curl -fsSL -o "${theme_tmp}/visuals.tar.gz" \
     "https://github.com/elavo-io/elavo-visuals/archive/${visuals_theme_rev}.tar.gz"

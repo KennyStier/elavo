@@ -104,12 +104,15 @@
 
   <!-- Defaults for every pointer. System Settings' Mouse and Trackpad panes
        write the non-touch and touchpad categories in ~/.config/labwc/rc.xml,
-       which take over from these for that kind of device. -->
+       which take over from these for that kind of device. clickMethod makes
+       a two-finger click the right-click; Trackpad can switch that to a
+       click in the bottom-right corner. -->
   <libinput>
     <device category="default">
       <naturalScroll>yes</naturalScroll>
       <tap>yes</tap>
       <disableWhileTyping>yes</disableWhileTyping>
+      <clickMethod>clickfinger</clickMethod>
     </device>
   </libinput>
 </labwc_config>
