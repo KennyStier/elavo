@@ -39,7 +39,11 @@ RUN dnf5 install -y git gcc meson ninja-build pkgconf-pkg-config \
 RUN git clone --depth 1 --branch "${ELAVO_LABWC_MODS_REF}" \
         https://github.com/elavo-io/elavo-labwc-mods.git /src
 WORKDIR /src
-RUN ./scripts/assemble.sh /tmp/labwc && DESTDIR=/out meson install -C /tmp/labwc/build
+# Meson defaults to /usr/local, which is a symlink to /var/usrlocal on bootc.
+RUN ./scripts/assemble.sh /tmp/labwc && \
+    meson configure /tmp/labwc/build --prefix=/usr && \
+    DESTDIR=/out meson install -C /tmp/labwc/build && \
+    test -x /out/usr/bin/labwc && test ! -e /out/usr/local
 
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
