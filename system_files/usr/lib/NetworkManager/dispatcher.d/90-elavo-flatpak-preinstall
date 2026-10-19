@@ -1,0 +1,13 @@
+#!/bin/sh
+# elavo-flatpak-preinstall.service runs at boot, which is often before Wi-Fi
+# connects: a connection that keeps its password in the user's keyring comes
+# up only after login. Run it again whenever a connection comes up or the
+# internet becomes reachable. Once Flatpak has installed a preinstall it
+# marks it done, so later runs return at once.
+case "$2" in
+    up) ;;
+    connectivity-change) [ "${CONNECTIVITY_STATE:-}" = FULL ] || exit 0 ;;
+    *) exit 0 ;;
+esac
+systemctl start --no-block elavo-flatpak-preinstall.service
+exit 0

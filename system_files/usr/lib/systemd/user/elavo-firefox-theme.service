@@ -1,0 +1,8 @@
+[Unit]
+Description=Elavo window buttons for new Firefox profiles
+Documentation=file:///usr/share/themes/Elavo/README.md
+ConditionPathExists=/usr/share/themes/Elavo/firefox/install.sh
+
+[Service]
+Type=oneshot
+ExecStart=/usr/share/themes/Elavo/firefox/install.sh

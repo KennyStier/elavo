@@ -29,7 +29,7 @@ The Elavo icon theme comes from `elavo-visuals` `themes/elavo-icons`, at the sam
 
 `gnome-keyring` is the login keyring. `greetd`'s PAM stack unlocks it with the account password. The session attaches that daemon to the session bus. This is where applications store sign-in tokens. It is not disk encryption.
 
-Flathub is enabled from `/etc/flatpak/remotes.d`. Firefox (`org.mozilla.firefox`) is declared in `/usr/share/flatpak/preinstall.d`. `elavo-flatpak-preinstall.service` installs it after the network is up. A system Flatpak installed during the image build would land in `/var`, which bootc does not ship, so the browser is not on the image until that first online boot.
+Flathub is enabled from `/etc/flatpak/remotes.d`. Firefox (`org.mozilla.firefox`) is declared in `/usr/share/flatpak/preinstall.d`. `elavo-flatpak-preinstall.service` installs it after the network is up. A system Flatpak installed during the image build would land in `/var`, which bootc does not ship, so the browser is not on the machine until it first gets online. The service runs at boot, and `/usr/lib/NetworkManager/dispatcher.d/90-elavo-flatpak-preinstall` runs it again whenever a connection comes up, because Wi-Fi that keeps its password in the user's keyring connects only after login. Once Flatpak has installed Firefox it does not install it again, even if the user removes it. The Firefox RPM that `base-main` ships is removed, so the Flatpak is the only Firefox.
 
 The Plymouth theme is fetched during the image build from `elavo-visuals` `main`, path `bootscreen/elavo-new/elavo-boot/`. It is installed at `/usr/share/plymouth/themes/elavo-boot`, set with `plymouth-set-default-theme elavo-boot`, and built into the initramfs with dracut. The frames are not stored in this repository. The first boot should show that splash before the greeter.
 
@@ -40,7 +40,7 @@ The Elavo theme is fetched from `elavo-visuals` at the commit in `visuals_theme_
 - Keeps a copy of the theme in `~/.local/share/themes`, refreshed when the image's copy changes, because Flatpak apps cannot read `/usr/share/themes`. A symlink there, or a copy without the image's stamp, is left alone.
 - Adds the libadwaita import and the accent file to `~/.config/gtk-4.0/gtk.css`, keeping anything already in it.
 - Sets the user Flatpak override that lets apps read the theme copy and the GTK settings, read-only.
-- Adds the Elavo window buttons to Firefox profiles.
+- Adds the Elavo window buttons to Firefox profiles. Before Firefox has ever run, it creates the profile the Flatpak will use, so the buttons are there on the first launch. `elavo-firefox-theme.path` adds them to profiles Firefox creates later (from `about:profiles`, or when Refresh Firefox replaces one) as soon as `profiles.ini` changes.
 - Sets Chrome, Brave, and Chromium profiles that never chose a theme to GTK, while the browser is closed. On Classic they draw their own buttons.
 
 The theme names Roboto, and the image installs it and sets it in dconf.

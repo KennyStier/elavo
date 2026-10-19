@@ -62,6 +62,12 @@ dnf5 install -y \
     polkit \
     pciutils
 
+# base-main ships Firefox as an RPM. Elavo's Firefox is the Flathub Flatpak
+# (preinstalled below), which updates on its own; with both, the launcher and
+# the dock would show two Firefoxes, with separate profiles.
+dnf5 remove -y firefox firefox-langpacks
+test ! -e /usr/bin/firefox
+
 # No copy in /etc/skel: elavo-session runs labwc --merge-config, so these
 # system files stay in effect and ~/.config/labwc holds only user changes.
 install -d /etc/xdg/labwc
@@ -153,6 +159,10 @@ test -x /usr/share/themes/Elavo/firefox/install.sh
 # The theme names Roboto; without it GTK falls back to another family.
 test -f /usr/share/fonts/google-roboto/Roboto-Regular.ttf
 systemctl --global enable elavo-user-theme.service
+# elavo-user-theme themes the profiles that exist at login. This themes the
+# ones Firefox creates later, including the Flatpak's first after its
+# preinstall finishes.
+systemctl --global enable elavo-firefox-theme.path
 
 # Flatpak finds ~/Downloads (xdg-download) through ~/.config/user-dirs.dirs.
 # Without that file a Flatpak browser saves into a Downloads folder inside its
@@ -240,7 +250,10 @@ dconf update
 # Flathub is shipped in /etc/flatpak/remotes.d. Firefox is a preinstall file
 # under /usr/share/flatpak/preinstall.d. elavo-flatpak-preinstall.service
 # applies it after the network is up, because a system Flatpak install lives
-# in /var and bootc does not ship /var.
+# in /var and bootc does not ship /var. It runs at boot, and the
+# NetworkManager dispatcher script runs it again when a connection comes up,
+# for machines whose Wi-Fi connects only after login.
+chmod 755 /usr/lib/NetworkManager/dispatcher.d/90-elavo-flatpak-preinstall
 
 systemctl enable greetd.service elavo-flatpak-preinstall.service
 systemctl set-default graphical.target

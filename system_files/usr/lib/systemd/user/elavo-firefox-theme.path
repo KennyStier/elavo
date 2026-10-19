@@ -1,0 +1,15 @@
+[Unit]
+Description=Watch for new Firefox profiles
+Documentation=file:///usr/share/themes/Elavo/README.md
+
+# Firefox rewrites profiles.ini when it creates a profile: on its first run,
+# from about:profiles, and when Refresh Firefox replaces one. The paths need
+# not exist yet; systemd watches the nearest parent until they do.
+[Path]
+PathChanged=%h/.var/app/org.mozilla.firefox/config/mozilla/firefox/profiles.ini
+PathChanged=%h/.var/app/org.mozilla.firefox/.mozilla/firefox/profiles.ini
+PathChanged=%h/.config/mozilla/firefox/profiles.ini
+PathChanged=%h/.mozilla/firefox/profiles.ini
+
+[Install]
+WantedBy=default.target
