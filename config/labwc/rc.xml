@@ -2,8 +2,7 @@
 <labwc_config>
   <theme>
     <name>Elavo</name>
-    <cornerRadius>12</cornerRadius>
-    <dropShadows>yes</dropShadows>
+    <!-- Radius, maximized corners, and shadows come from the Elavo themerc. -->
     <titlebar>
       <layout>close,iconify,max:</layout>
     </titlebar>

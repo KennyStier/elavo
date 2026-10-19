@@ -19,7 +19,8 @@ cp -avf "/ctx/system_files"/. /
 # mount themselves; newer ones carry their own.
 
 dnf5 install -y \
-    labwc \
+    wlroots \
+    libsfdo \
     greetd \
     gtkgreet \
     cage \
@@ -73,6 +74,12 @@ chmod 755 /etc/xdg/labwc/autostart \
 python3 /usr/libexec/elavo-power-button --self-test
 test -x /usr/bin/swaybg
 test -x /usr/libexec/elavo-wallpaper
+
+# labwc from the mods stage. Nothing in the package set Requires: labwc
+# (checked on Fedora 44), so the distro package is not installed. wlroots
+# and libsfdo above are the runtime libraries the mods build links.
+cp -a /ctx/labwc_files/. /
+test -x /usr/bin/labwc
 
 # Folio's panel, dock, Lens, and app switcher (the folio stage in the Containerfile).
 # They are wanted by graphical-session.target, which elavo-session.target

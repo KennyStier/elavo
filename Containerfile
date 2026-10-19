@@ -24,6 +24,23 @@ RUN git clone --depth 1 --branch "${ELAVO_SYSTEM_SETTINGS_REF}" \
 WORKDIR /src
 RUN cargo build --release --locked && DESTDIR=/out scripts/install
 
+# labwc with the mods layer, built at a pinned revision of elavo-labwc-mods.
+# main until the first tag; pin a tag the way Folio is pinned after that.
+# The stage clones elavo-labwc at the commit in that repo's LABWC_REF.
+FROM registry.fedoraproject.org/fedora:44 AS labwc
+ARG ELAVO_LABWC_MODS_REF=main
+RUN dnf5 install -y git gcc meson ninja-build pkgconf-pkg-config \
+        wlroots-devel wayland-devel wayland-protocols-devel \
+        libxml2-devel cairo-devel pango-devel librsvg2-devel \
+        libdrm-devel libinput-devel libxkbcommon-devel glib2-devel \
+        libpng-devel pixman-devel libsfdo-devel xcb-util-wm-devel \
+        libxcb-devel && \
+    dnf5 clean all
+RUN git clone --depth 1 --branch "${ELAVO_LABWC_MODS_REF}" \
+        https://github.com/elavo-io/elavo-labwc-mods.git /src
+WORKDIR /src
+RUN ./scripts/assemble.sh /tmp/labwc && DESTDIR=/out meson install -C /tmp/labwc/build
+
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
 COPY build_files /
@@ -31,6 +48,7 @@ COPY system_files /system_files
 COPY config /config
 COPY --from=folio /out /folio_files
 COPY --from=system-settings /out /system_settings_files
+COPY --from=labwc /out /labwc_files
 
 # Base Image
 FROM ghcr.io/ublue-os/base-main:latest
