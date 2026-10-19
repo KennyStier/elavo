@@ -1,7 +1,8 @@
-# Folio (the panel, the dock, and Lens), built at a pinned tag. Same Fedora
-# release as base-main, so the binaries link against the GTK the image ships.
+# Folio (the panel, the dock, Lens, and the app switcher), built at a pinned
+# tag. Same Fedora release as base-main, so the binaries link against the GTK
+# the image ships.
 FROM registry.fedoraproject.org/fedora:44 AS folio
-ARG ELAVO_FOLIO_REF=v0.2.2
+ARG ELAVO_FOLIO_REF=v0.2.4
 RUN dnf5 install -y git gcc pkgconf-pkg-config rust cargo \
         gtk4-devel gtk4-layer-shell-devel wayland-devel && \
     dnf5 clean all
