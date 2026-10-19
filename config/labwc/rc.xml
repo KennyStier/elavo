@@ -100,6 +100,19 @@
     <keybind key="W-S-s">
       <action name="Execute" command="/usr/libexec/elavo-grim-region" />
     </keybind>
+    <!-- Replaces labwc's window switcher. The running switcher owns the rest of the hold. -->
+    <keybind key="A-Tab">
+      <action name="Execute" command="elavo-switcher --next" />
+    </keybind>
+    <keybind key="A-S-Tab">
+      <action name="Execute" command="elavo-switcher --previous" />
+    </keybind>
+    <keybind key="A-grave">
+      <action name="Execute" command="elavo-switcher --window-next" />
+    </keybind>
+    <keybind key="A-S-grave">
+      <action name="Execute" command="elavo-switcher --window-previous" />
+    </keybind>
   </keyboard>
 
   <!-- Defaults for every pointer. System Settings' Mouse and Trackpad panes

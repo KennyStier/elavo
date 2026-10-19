@@ -74,14 +74,15 @@ python3 /usr/libexec/elavo-power-button --self-test
 test -x /usr/bin/swaybg
 test -x /usr/libexec/elavo-wallpaper
 
-# Folio's panel, dock, and Lens (the folio stage in the Containerfile).
+# Folio's panel, dock, Lens, and app switcher (the folio stage in the Containerfile).
 # They are wanted by graphical-session.target, which elavo-session.target
 # (started from labwc's autostart) pulls in.
 cp -a /ctx/folio_files/. /
 test -x /usr/bin/elavo-panel
 test -x /usr/bin/elavo-dock
 test -x /usr/bin/elavo-lens
-systemctl --global enable elavo-panel.service elavo-dock.service elavo-lens.service
+test -x /usr/bin/elavo-switcher
+systemctl --global enable elavo-panel.service elavo-dock.service elavo-lens.service elavo-switcher.service
 
 # System Settings (the system-settings stage). The panel's System Settings…
 # item and the dock's Dock Settings… open it. Its helper runs updates and
@@ -105,7 +106,7 @@ systemctl --global enable elavo-idle.service elavo-wallpaper.service \
 # bars, and Firefox's window buttons. The icon theme carries the panel's sun
 # and Elavo's app icons, and inherits Adwaita for everything else. The stamp
 # tells elavo-user-theme which build each account's copy came from.
-visuals_theme_rev=3e2e8913c6472166ebca82f70d837a8c2266c561
+visuals_theme_rev=73aea6ee957e5402eeb7501ecd94ce0af2e1195d
 theme_tmp=$(mktemp -d)
 curl -fsSL -o "${theme_tmp}/visuals.tar.gz" \
     "https://github.com/elavo-io/elavo-visuals/archive/${visuals_theme_rev}.tar.gz"
@@ -251,7 +252,7 @@ systemctl set-default graphical.target
 osrel=/usr/lib/os-release
 test -f "${osrel}"
 test -L /etc/os-release
-elavo_version=0.1.4
+elavo_version=0.1.5
 version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}" | tr -d "\"'")
 [[ "${version_id}" =~ ^[0-9]+$ ]]
 kept_version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}")
