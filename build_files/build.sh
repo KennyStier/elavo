@@ -124,21 +124,20 @@ install -d /usr/share/themes /usr/share/icons
 rm -rf /usr/share/themes/Elavo /usr/share/icons/Elavo
 cp -a "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/themes/Elavo" /usr/share/themes/Elavo
 cp -a "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/themes/elavo-icons" /usr/share/icons/Elavo
-# Dynamic wallpapers, when this visuals pin has them. Pictures may be named
-# light.jpg or blue-light.jpg, and may sit under dynamic-wallpapers/. The
-# source directory is the artwork master and is not installed.
-if tar -tzf "${theme_tmp}/visuals.tar.gz" | grep -q '/assets/wallpaper/'; then
-    tar -xzf "${theme_tmp}/visuals.tar.gz" -C "${theme_tmp}" \
-        --wildcards "elavo-visuals-${visuals_theme_rev}/assets/wallpaper"
-    wallpaper_src="${theme_tmp}/elavo-visuals-${visuals_theme_rev}/assets/wallpaper"
-    install -d /usr/share/backgrounds/elavo
-    find "${wallpaper_src}" -type d -name source -prune -o -type f ! -name '*source*' -print \
-        | while read -r file; do
-            rel=${file#"${wallpaper_src}/"}
-            install -D -m 0644 "${file}" "/usr/share/backgrounds/elavo/${rel}"
-        done
-    test -n "$(find /usr/share/backgrounds/elavo -type f -print -quit)"
-fi
+# Dynamic wallpapers. Pictures may be named light.jpg or blue-light.jpg, and
+# may sit under dynamic-wallpapers/. The source directory is the artwork
+# master and is not installed. The visuals pin must carry assets/wallpaper.
+tar -xzf "${theme_tmp}/visuals.tar.gz" -C "${theme_tmp}" \
+    "elavo-visuals-${visuals_theme_rev}/assets/wallpaper"
+wallpaper_src="${theme_tmp}/elavo-visuals-${visuals_theme_rev}/assets/wallpaper"
+install -d /usr/share/backgrounds/elavo
+find "${wallpaper_src}" -type d -name source -prune -o -type f ! -name '*source*' -print \
+    | while read -r file; do
+        rel=${file#"${wallpaper_src}/"}
+        install -D -m 0644 "${file}" "/usr/share/backgrounds/elavo/${rel}"
+    done
+test -n "$(find /usr/share/backgrounds/elavo -name '*-light.jpg' -print -quit)"
+test -n "$(find /usr/share/backgrounds/elavo -name '*-dark.jpg' -print -quit)"
 rm -rf "${theme_tmp}"
 gtk-update-icon-cache -f /usr/share/icons/Elavo
 test -f /usr/share/icons/Elavo/index.theme
