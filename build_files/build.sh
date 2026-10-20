@@ -104,6 +104,8 @@ test -f /usr/share/polkit-1/actions/io.elavo.greeter.policy
 test -f /usr/lib/tmpfiles.d/elavo-greeter.conf
 test -f /etc/pam.d/elavo-lock
 grep -q 'elavo-greeter' /etc/greetd/config.toml
+# The greeter sets cage's output scale on 4K panels with wlr-randr.
+command -v wlr-randr >/dev/null
 getent passwd greetd >/dev/null
 
 # System Settings (the system-settings stage). The panel's System Settings…
@@ -278,7 +280,7 @@ systemctl set-default graphical.target
 osrel=/usr/lib/os-release
 test -f "${osrel}"
 test -L /etc/os-release
-elavo_version=0.1.7
+elavo_version=0.1.8
 version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}" | tr -d "\"'")
 [[ "${version_id}" =~ ^[0-9]+$ ]]
 kept_version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}")
