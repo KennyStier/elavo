@@ -107,8 +107,10 @@ def session_locked():
         )
         if result.stdout.strip() == "yes":
             return True
-    # swaylock does not always set the hint.
-    return subprocess.run(["pgrep", "-x", "swaylock"], capture_output=True).returncode == 0
+    # The lock screen sets the hint once it holds the lock. Its process is the
+    # fallback for the moment before that, or when logind refused the call.
+    lock = ["pgrep", "-u", str(os.getuid()), "-f", "elavo-greeter --lock"]
+    return subprocess.run(lock, capture_output=True).returncode == 0
 
 
 def wake_screen():

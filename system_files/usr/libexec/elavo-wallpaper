@@ -154,6 +154,17 @@ record() {
     mv -f "${tmp}" "${state}"
 }
 
+# The login screen shows each person's wallpaper but cannot read home
+# directories, so the session hands it a copy. polkit allows the active
+# session without asking. A failure leaves the default picture there.
+publish() {
+    helper=/usr/libexec/elavo-greeter-publish
+    [ -x "${helper}" ] || return 0
+    [ "${published:-}" = "$1" ] && return 0
+    published=$1
+    pkexec "${helper}" "$1" >/dev/null 2>&1 &
+}
+
 apply() {
     stop_bg
     # A previous run may have left a wallpaper process behind.
@@ -162,6 +173,7 @@ apply() {
         swaybg -o '*' -i "${pic}" -m fill >/dev/null 2>&1 &
         bg_pid=$!
         record "${pic}"
+        publish "${pic}"
     else
         record ""
     fi

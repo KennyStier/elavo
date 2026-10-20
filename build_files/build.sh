@@ -8,7 +8,7 @@ cp -avf "/ctx/system_files"/. /
 ### Install packages
 # Names confirmed against Fedora 44, which ghcr.io/ublue-os/base-main tracks.
 # qt6-wayland is not a Fedora package; the Wayland Qt platform is qt6-qtwayland.
-# gtkgreet requires cage, sway, wayfire, or river. cage hosts the greeter only.
+# cage hosts Folio's elavo-greeter at login, and nothing else.
 # NetworkManager, PipeWire, and WirePlumber are already on base-main.
 # kanshi applies the display arrangement System Settings saves. mate-polkit
 # is the password prompt for pkexec and polkit D-Bus calls; polkit-gnome is
@@ -22,7 +22,6 @@ dnf5 install -y \
     wlroots \
     libsfdo \
     greetd \
-    gtkgreet \
     cage \
     gtk4-layer-shell \
     foot \
@@ -35,7 +34,6 @@ dnf5 install -y \
     cliphist \
     grim \
     slurp \
-    swaylock \
     swayidle \
     swaybg \
     wlr-randr \
@@ -96,6 +94,17 @@ test -x /usr/bin/elavo-dock
 test -x /usr/bin/elavo-lens
 test -x /usr/bin/elavo-switcher
 systemctl --global enable elavo-panel.service elavo-dock.service elavo-lens.service elavo-switcher.service
+# The login and lock screen. greetd's config.toml runs it in cage, and
+# elavo-idle runs it with --lock. The lock checks passwords with
+# /etc/pam.d/elavo-lock. Sessions publish their wallpaper for it through
+# the helper the polkit policy names; tmpfiles makes the directory.
+test -x /usr/bin/elavo-greeter
+test -x /usr/libexec/elavo-greeter-publish
+test -f /usr/share/polkit-1/actions/io.elavo.greeter.policy
+test -f /usr/lib/tmpfiles.d/elavo-greeter.conf
+test -f /etc/pam.d/elavo-lock
+grep -q 'elavo-greeter' /etc/greetd/config.toml
+getent passwd greetd >/dev/null
 
 # System Settings (the system-settings stage). The panel's System Settings…
 # item and the dock's Dock Settings… open it. Its helper runs updates and
@@ -205,8 +214,6 @@ test -e /usr/lib64/security/pam_gnome_keyring.so
 patch_pam /etc/pam.d/greetd auth "auth        optional      pam_gnome_keyring.so"
 patch_pam /etc/pam.d/greetd session "session     optional      pam_gnome_keyring.so auto_start"
 patch_pam /etc/pam.d/passwd password "password    optional      pam_gnome_keyring.so"
-
-/usr/libexec/gtkgreet-update-environments -w /etc/greetd/environments
 
 # Splash from elavo-visuals main, bootscreen/elavo-new/elavo-boot. The images
 # are not stored in this repo. The image build takes whatever main is when

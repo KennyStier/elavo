@@ -24,7 +24,8 @@ v=$(value LockAfter)
 v=$(value DisplayOffAfter)
 [ -n "${v}" ] && display_off_after=${v}
 
-lock='swaylock -f -c 000000'
+# Returns once the screen is locked, so before-sleep waits for it.
+lock='elavo-greeter --lock'
 set -- -w lock "${lock}" before-sleep "${lock}"
 if [ "${lock_after}" -gt 0 ]; then
     set -- "$@" timeout "${lock_after}" "${lock}"
