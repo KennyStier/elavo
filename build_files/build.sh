@@ -104,6 +104,8 @@ test -f /usr/share/polkit-1/actions/io.elavo.greeter.policy
 test -f /usr/lib/tmpfiles.d/elavo-greeter.conf
 test -f /etc/pam.d/elavo-lock
 grep -q 'elavo-greeter' /etc/greetd/config.toml
+# Closing the lid soon after waking must still suspend and lock.
+grep -q '^HoldoffTimeoutSec=5$' /usr/lib/systemd/logind.conf.d/40-elavo-lid-holdoff.conf
 # The greeter sets cage's output scale on 4K panels with wlr-randr.
 command -v wlr-randr >/dev/null
 getent passwd greetd >/dev/null
