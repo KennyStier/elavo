@@ -85,15 +85,16 @@ test -x /usr/libexec/elavo-wallpaper
 cp -a /ctx/labwc_files/. /
 test -x /usr/bin/labwc
 
-# Folio's panel, dock, Lens, and app switcher (the folio stage in the Containerfile).
-# They are wanted by graphical-session.target, which elavo-session.target
-# (started from labwc's autostart) pulls in.
+# Folio's panel, dock, Lens, app switcher, and text input (the folio stage
+# in the Containerfile). They are wanted by graphical-session.target, which
+# elavo-session.target (started from labwc's autostart) pulls in.
 cp -a /ctx/folio_files/. /
 test -x /usr/bin/elavo-panel
 test -x /usr/bin/elavo-dock
 test -x /usr/bin/elavo-lens
 test -x /usr/bin/elavo-switcher
-systemctl --global enable elavo-panel.service elavo-dock.service elavo-lens.service elavo-switcher.service
+test -x /usr/bin/elavo-input
+systemctl --global enable elavo-panel.service elavo-dock.service elavo-lens.service elavo-switcher.service elavo-input.service
 # The login and lock screen. greetd's config.toml runs it in cage, and
 # elavo-idle runs it with --lock. The lock checks passwords with
 # /etc/pam.d/elavo-lock. Sessions publish their wallpaper for it through
