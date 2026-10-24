@@ -2,7 +2,7 @@
 # tag. Same Fedora release as base-main, so the binaries link against the GTK
 # the image ships.
 FROM registry.fedoraproject.org/fedora:44 AS folio
-ARG ELAVO_FOLIO_REF=v0.3.1
+ARG ELAVO_FOLIO_REF=v0.3.1.1
 RUN dnf5 install -y git gcc pkgconf-pkg-config rust cargo \
         gtk4-devel gtk4-layer-shell-devel wayland-devel && \
     dnf5 clean all
