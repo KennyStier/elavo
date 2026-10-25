@@ -1,0 +1,86 @@
+#!/bin/sh
+# Follow the GTK color scheme with labwc's title bars.
+#
+# GTK stores the choice as org.gnome.desktop.interface color-scheme and
+# loads gtk-dark.css when it is prefer-dark. labwc does not read that
+# setting. It reads the Elavo themerc, then ~/.config/labwc/themerc-override.
+# This links the override at the theme's themerc-dark for a dark scheme and
+# removes that link for a light one, then asks the running labwc to reload.
+# A themerc-override this did not create is left alone.
+set -u
+
+config="${XDG_CONFIG_HOME:-${HOME}/.config}"
+override="${config}/labwc/themerc-override"
+
+theme_dark() {
+    data="${XDG_DATA_HOME:-${HOME}/.local/share}"
+    candidates="${data}/themes/Elavo/openbox-3/themerc-dark
+${HOME}/.themes/Elavo/openbox-3/themerc-dark"
+    rest="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    while [ -n "${rest}" ]; do
+        dir="${rest%%:*}"
+        case "${rest}" in
+            *:*) rest="${rest#*:}" ;;
+            *) rest="" ;;
+        esac
+        candidates="${candidates}
+${dir}/themes/Elavo/openbox-3/themerc-dark"
+    done
+    printf '%s\n' "${candidates}" | while IFS= read -r path; do
+        if [ -f "${path}" ]; then
+            printf '%s\n' "${path}"
+            break
+        fi
+    done
+}
+
+ours() {
+    [ -L "${override}" ] || return 1
+    case "$(readlink "${override}")" in
+        */Elavo/openbox-3/themerc-dark) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# 0 when the override changed, 1 when it was already right or not ours to change.
+apply() {
+    scheme="$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || true)"
+    dark="$(theme_dark || true)"
+    if [ "${scheme}" = "'prefer-dark'" ] && [ -n "${dark}" ]; then
+        if [ -e "${override}" ] && ! ours; then
+            echo "elavo-labwc-theme: ${override} is not ours; leaving it" >&2
+            return 1
+        fi
+        if [ "$(readlink "${override}" 2>/dev/null || true)" = "${dark}" ]; then
+            return 1
+        fi
+        mkdir -p "${config}/labwc"
+        ln -sfn "${dark}" "${override}"
+        return 0
+    fi
+    if ours; then
+        rm -f "${override}"
+        return 0
+    fi
+    return 1
+}
+
+reconfigure() {
+    me="$(id -u)"
+    for comm in /proc/[0-9]*/comm; do
+        [ "$(cat "${comm}" 2>/dev/null || true)" = "labwc" ] || continue
+        pid="${comm%/comm}"
+        pid="${pid##*/}"
+        owner="$(awk '/^Uid:/ { print $2; exit }' "/proc/${pid}/status" 2>/dev/null || true)"
+        [ "${owner}" = "${me}" ] || continue
+        kill -HUP "${pid}" 2>/dev/null || true
+    done
+}
+
+command -v gsettings >/dev/null 2>&1 || exit 0
+
+apply && reconfigure || true
+
+gsettings monitor org.gnome.desktop.interface color-scheme | while IFS= read -r _; do
+    apply && reconfigure || true
+done

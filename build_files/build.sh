@@ -75,7 +75,8 @@ install -d /etc/xdg/labwc
 cp -a /ctx/config/labwc/. /etc/xdg/labwc/
 chmod 755 /etc/xdg/labwc/autostart \
     /usr/libexec/elavo-grim-region /usr/libexec/elavo-session \
-    /usr/libexec/elavo-user-theme /usr/libexec/elavo-idle \
+    /usr/libexec/elavo-user-theme /usr/libexec/elavo-labwc-theme \
+    /usr/libexec/elavo-idle \
     /usr/libexec/elavo-wallpaper \
     /usr/libexec/elavo-panel-action /usr/libexec/elavo-power-button
 python3 /usr/libexec/elavo-power-button --self-test
@@ -139,7 +140,7 @@ systemctl --global enable elavo-idle.service elavo-wallpaper.service \
 # bars, and Firefox's window buttons. The icon theme carries the panel's sun
 # and Elavo's app icons, and inherits Adwaita for everything else. The stamp
 # tells elavo-user-theme which build each account's copy came from.
-visuals_theme_rev=b1e48e4d70f6299a417f3a32115834ea93a4eabf
+visuals_theme_rev=86a4bcb26a08f58c3e0b10fdd11eb62291b86e10
 theme_tmp=$(mktemp -d)
 curl -fsSL -o "${theme_tmp}/visuals.tar.gz" \
     "https://github.com/elavo-io/elavo-visuals/archive/${visuals_theme_rev}.tar.gz"
@@ -187,11 +188,12 @@ test -f /usr/share/themes/Elavo/gtk-4.0/gtk.css
 test -f /usr/share/themes/Elavo/gtk-4.0/libadwaita.css
 test -f /usr/share/themes/Elavo/gtk-3.0/gtk.css
 test -f /usr/share/themes/Elavo/openbox-3/themerc
+test -f /usr/share/themes/Elavo/openbox-3/themerc-dark
 test -e /usr/share/themes/Elavo/openbox-3/close-active.png
 test -x /usr/share/themes/Elavo/firefox/install.sh
 # The theme names Roboto; without it GTK falls back to another family.
 test -f /usr/share/fonts/google-roboto/Roboto-Regular.ttf
-systemctl --global enable elavo-user-theme.service
+systemctl --global enable elavo-user-theme.service elavo-labwc-theme.service
 # elavo-user-theme themes the profiles that exist at login. This themes the
 # ones Firefox creates later, including the Flatpak's first after its
 # preinstall finishes.
