@@ -14,7 +14,8 @@ cp -avf "/ctx/system_files"/. /
 # is the password prompt for pkexec and polkit D-Bus calls; polkit-gnome is
 # not packaged for Fedora 44. accountsservice, polkit, and pciutils (lspci,
 # for About's graphics row) are on base-main today; they are listed so that
-# stays true.
+# stays true. ImageMagick prepares account pictures and ffmpeg shows the
+# camera in Change Picture.
 # fuse-libs is libfuse.so.2. AppImages built with the older runtime load it to
 # mount themselves; newer ones carry their own.
 
@@ -58,7 +59,9 @@ dnf5 install -y \
     mate-polkit \
     accountsservice \
     polkit \
-    pciutils
+    pciutils \
+    ImageMagick \
+    ffmpeg
 
 # base-main ships Firefox as an RPM. Elavo's Firefox is the Flathub Flatpak
 # (preinstalled below), which updates on its own; with both, the launcher and
@@ -77,6 +80,8 @@ chmod 755 /etc/xdg/labwc/autostart \
     /usr/libexec/elavo-panel-action /usr/libexec/elavo-power-button
 python3 /usr/libexec/elavo-power-button --self-test
 test -x /usr/bin/swaybg
+test -x /usr/bin/magick
+test -x /usr/bin/ffmpeg
 test -x /usr/libexec/elavo-wallpaper
 
 # labwc from the mods stage. Nothing in the package set Requires: labwc
@@ -161,6 +166,17 @@ find "${wallpaper_src}" -type d -name source -prune -o -type f ! -name '*source*
     done
 test -n "$(find /usr/share/backgrounds/elavo -name '*-light.jpg' -print -quit)"
 test -n "$(find /usr/share/backgrounds/elavo -name '*-dark.jpg' -print -quit)"
+# Suggestion pictures for Change Picture. The pin gains them when
+# elavo-visuals has assets/user-images; an older pin simply has none.
+if tar -tzf "${theme_tmp}/visuals.tar.gz" | grep -q '/assets/user-images/'; then
+    tar -xzf "${theme_tmp}/visuals.tar.gz" -C "${theme_tmp}" \
+        "elavo-visuals-${visuals_theme_rev}/assets/user-images"
+    install -d /usr/share/elavo/user-images
+    find "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/assets/user-images" -type f \
+        \( -name '*.jpg' -o -name '*.jpeg' -o -name '*.png' -o -name '*.webp' \) \
+        -exec install -m 0644 {} /usr/share/elavo/user-images/ \;
+    test -n "$(find /usr/share/elavo/user-images -type f -print -quit)"
+fi
 rm -rf "${theme_tmp}"
 gtk-update-icon-cache -f /usr/share/icons/Elavo
 test -f /usr/share/icons/Elavo/index.theme
@@ -286,7 +302,7 @@ systemctl set-default graphical.target
 osrel=/usr/lib/os-release
 test -f "${osrel}"
 test -L /etc/os-release
-elavo_version=0.3.0.2
+elavo_version=0.3.0.3
 version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}" | tr -d "\"'")
 [[ "${version_id}" =~ ^[0-9]+$ ]]
 kept_version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}")
