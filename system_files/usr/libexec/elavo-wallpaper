@@ -5,7 +5,7 @@
 # System Settings writes ~/.config/elavo/wallpaper.conf:
 #
 #   [Wallpaper]
-#   Kind=dynamic|custom
+#   Kind=dynamic|landscape|custom
 #   Id=wavy-blue
 #   Custom=/path/to/a picture.jpg
 #   Variant=automatic|light|dark
@@ -16,6 +16,11 @@
 # Its pictures are light.jpg or blue-light.jpg, and the same for dark.
 # A thumb file is only for the picker. Directories named source, and files
 # with source in the name, are artwork masters and are not installed.
+#
+# A landscape picture is one file in a directory named landscape:
+# landscape/beach-nenad-radojcic.jpg, the place and then the photographer.
+# It does not switch with appearance. A missing file falls through to the
+# dynamic picture.
 #
 # The picture is
 # always scaled to cover the screen (swaybg's fill mode). A missing dark or
@@ -88,6 +93,41 @@ find_role() {
     file_for_role "${dir}" "${role}"
 }
 
+file_named() {
+    dir=$1
+    id=$2
+    for ext in jpg jpeg png webp; do
+        exact="${dir}/${id}.${ext}"
+        if [ -f "${exact}" ]; then
+            printf '%s\n' "${exact}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# The id is a file stem. Reject anything that is not a stem so a crafted
+# config cannot walk out of the landscape directory.
+find_landscape() {
+    id=$1
+    case "${id}" in
+        ""|*[!A-Za-z0-9._-]*) return 1 ;;
+    esac
+    for root in "${user_root}" "${sys_root}"; do
+        [ -d "${root}" ] || continue
+        while IFS= read -r dir; do
+            [ -n "${dir}" ] || continue
+            if pic=$(file_named "${dir}" "${id}"); then
+                printf '%s\n' "${pic}"
+                return 0
+            fi
+        done <<EOF
+$(find -H "${root}" -type d -name landscape ! -path '*/source/*' 2>/dev/null || true)
+EOF
+    done
+    return 1
+}
+
 first_id() {
     list=$(mktemp)
     for root in "${user_root}" "${sys_root}"; do
@@ -118,6 +158,15 @@ resolve() {
     if [ "${kind}" = "custom" ] && [ -n "${custom}" ] && [ -f "${custom}" ]; then
         printf '%s\n' "${custom}"
         return 0
+    fi
+
+    if [ "${kind}" = "landscape" ]; then
+        if pic=$(find_landscape "${id}"); then
+            printf '%s\n' "${pic}"
+            return 0
+        fi
+        # The landscape file is gone. Show a dynamic picture instead.
+        id=
     fi
 
     [ -n "${id}" ] || id=$(first_id || true)

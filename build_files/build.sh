@@ -145,8 +145,10 @@ install -d /usr/share/themes /usr/share/icons
 rm -rf /usr/share/themes/Elavo /usr/share/icons/Elavo
 cp -a "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/themes/Elavo" /usr/share/themes/Elavo
 cp -a "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/themes/elavo-icons" /usr/share/icons/Elavo
-# Dynamic wallpapers. Pictures may be named light.jpg or blue-light.jpg, and
-# may sit under dynamic-wallpapers/. The source directory is the artwork
+# Dynamic wallpapers and still pictures such as landscape/. A dynamic
+# picture may be named light.jpg or blue-light.jpg, and may sit under
+# dynamic-wallpapers/. A landscape picture is one file,
+# landscape/beach-nenad-radojcic.jpg. The source directory is the artwork
 # master and is not installed. The visuals pin must carry assets/wallpaper.
 tar -xzf "${theme_tmp}/visuals.tar.gz" -C "${theme_tmp}" \
     "elavo-visuals-${visuals_theme_rev}/assets/wallpaper"
