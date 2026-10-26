@@ -292,6 +292,21 @@ chmod 755 /usr/lib/NetworkManager/dispatcher.d/90-elavo-flatpak-preinstall
 systemctl enable greetd.service elavo-flatpak-preinstall.service
 systemctl set-default graphical.target
 
+# Automatic updates follow System Settings' two switches, saved in
+# /etc/elavo/updates.conf. elavo-system-update.timer, from System Settings,
+# reads them. The base image's rpm-ostreed-automatic.timer staged updates
+# with no setting, so it is turned off. Disabling it only changes new
+# installs, where /etc comes from the image. The drop-in also stops it on
+# machines installed before, whose /etc keeps the timer enabled.
+systemctl enable elavo-system-update.timer
+systemctl disable rpm-ostreed-automatic.timer
+install -d /usr/lib/systemd/system/rpm-ostreed-automatic.service.d
+printf '%s\n' '[Service]' 'ExecCondition=/bin/false' \
+    > /usr/lib/systemd/system/rpm-ostreed-automatic.service.d/90-elavo-off.conf
+test -f /usr/lib/systemd/system/elavo-system-update.service
+test -L /etc/systemd/system/timers.target.wants/elavo-system-update.timer
+test ! -e /etc/systemd/system/timers.target.wants/rpm-ostreed-automatic.timer
+
 # Elavo's own version. GRUB's menu title is PRETTY_NAME, and About reads
 # VERSION, so both show this. VERSION_ID stays Fedora's major, read from the
 # base image: the ISO builder and grub2-switch-to-blscfg use it, and About's
