@@ -349,7 +349,7 @@ test ! -e /etc/systemd/system/timers.target.wants/rpm-ostreed-automatic.timer
 osrel=/usr/lib/os-release
 test -f "${osrel}"
 test -L /etc/os-release
-elavo_version=0.3.1.1
+elavo_version=0.3.1.2
 version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}" | tr -d "\"'")
 [[ "${version_id}" =~ ^[0-9]+$ ]]
 kept_version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}")
