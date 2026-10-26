@@ -167,17 +167,18 @@ find "${wallpaper_src}" -type d -name source -prune -o -type f ! -name '*source*
     done
 test -n "$(find /usr/share/backgrounds/elavo -name '*-light.jpg' -print -quit)"
 test -n "$(find /usr/share/backgrounds/elavo -name '*-dark.jpg' -print -quit)"
-# Suggestion pictures for Change Picture. The pin gains them when
-# elavo-visuals has assets/user-images; an older pin simply has none.
-if tar -tzf "${theme_tmp}/visuals.tar.gz" | grep -q '/assets/user-images/'; then
-    tar -xzf "${theme_tmp}/visuals.tar.gz" -C "${theme_tmp}" \
-        "elavo-visuals-${visuals_theme_rev}/assets/user-images"
-    install -d /usr/share/elavo/user-images
-    find "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/assets/user-images" -type f \
-        \( -name '*.jpg' -o -name '*.jpeg' -o -name '*.png' -o -name '*.webp' \) \
-        -exec install -m 0644 {} /usr/share/elavo/user-images/ \;
-    test -n "$(find /usr/share/elavo/user-images -type f -print -quit)"
-fi
+# Suggestion pictures for Change Picture. Required: an image without them
+# shows an empty Suggestions page on an installed machine. Do not test for
+# the directory with `tar | grep -q`. pipefail is on, grep -q closes the
+# pipe at the first hit, tar dies with SIGPIPE, and the if is false, so the
+# copy is skipped and the build still succeeds.
+tar -xzf "${theme_tmp}/visuals.tar.gz" -C "${theme_tmp}" \
+    "elavo-visuals-${visuals_theme_rev}/assets/user-images"
+install -d /usr/share/elavo/user-images
+find "${theme_tmp}/elavo-visuals-${visuals_theme_rev}/assets/user-images" -type f \
+    \( -name '*.jpg' -o -name '*.jpeg' -o -name '*.png' -o -name '*.webp' \) \
+    -exec install -m 0644 {} /usr/share/elavo/user-images/ \;
+test -n "$(find /usr/share/elavo/user-images -type f -print -quit)"
 rm -rf "${theme_tmp}"
 gtk-update-icon-cache -f /usr/share/icons/Elavo
 test -f /usr/share/icons/Elavo/index.theme
