@@ -158,6 +158,8 @@ grep -q '^d /var/Applications 2775 root wheel' /usr/lib/tmpfiles.d/elavo-applica
 grep -q '^d /var/.Trash 1777' /usr/lib/tmpfiles.d/elavo-applications.conf
 grep -q elavo-applications/exports /usr/lib/environment.d/60-elavo-applications.conf
 test -s /usr/share/elavo-applications/system-applications
+test -s /usr/share/elavo-applications/standardized-icons/template.png
+test -s /usr/share/elavo-applications/standardized-icons/mask.png
 command -v unsquashfs >/dev/null
 systemctl --global enable elavo-applications.service
 systemctl enable elavo-applications-system.service elavo-applications-system.path
