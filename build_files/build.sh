@@ -17,7 +17,9 @@ cp -avf "/ctx/system_files"/. /
 # stays true. ImageMagick prepares account pictures and ffmpeg shows the
 # camera in Change Picture.
 # fuse-libs is libfuse.so.2. AppImages built with the older runtime load it to
-# mount themselves; newer ones carry their own.
+# mount themselves; newer ones carry their own. squashfs-tools' unsquashfs
+# reads an AppImage's name and icon for the Applications folder without
+# running it.
 
 dnf5 install -y \
     wlroots \
@@ -55,6 +57,7 @@ dnf5 install -y \
     gnome-keyring-pam \
     xdg-user-dirs \
     fuse-libs \
+    squashfs-tools \
     kanshi \
     mate-polkit \
     accountsservice \
@@ -134,6 +137,30 @@ test -f /usr/lib/systemd/user/kanshi.service
 test -x /usr/bin/lspci
 systemctl --global enable elavo-idle.service elavo-wallpaper.service \
     elavo-polkit-agent.service elavo-power-button.service kanshi.service
+
+# The Applications folder (the applications stage). /Applications is shared
+# by every account and lives in /var, which tmpfiles makes: root:wheel 2775
+# with a default ACL, plus /var/.Trash so entries can go to the Trash from
+# another mount. The root service makes the locked entries the allowlist
+# names and an entry for every system Flatpak; each account's service
+# installs what that account drops in. Files loads the module that opens
+# entries as applications.
+cp -a /ctx/applications_files/. /
+ln -sfn var/Applications /Applications
+test "$(readlink /Applications)" = var/Applications
+test -x /usr/bin/elavo-applications
+test -x /usr/bin/elavo-applications-ctl
+test -x /usr/libexec/elavo-applications-helper
+test -f /usr/lib64/nautilus/extensions-4/libelavo-applications.so
+test -f /usr/share/polkit-1/actions/io.elavo.Applications.policy
+test -f /usr/share/dbus-1/services/io.elavo.Applications.service
+grep -q '^d /var/Applications 2775 root wheel' /usr/lib/tmpfiles.d/elavo-applications.conf
+grep -q '^d /var/.Trash 1777' /usr/lib/tmpfiles.d/elavo-applications.conf
+grep -q elavo-applications/exports /usr/lib/environment.d/60-elavo-applications.conf
+test -s /usr/share/elavo-applications/system-applications
+command -v unsquashfs >/dev/null
+systemctl --global enable elavo-applications.service
+systemctl enable elavo-applications-system.service elavo-applications-system.path
 
 # The Elavo themes from elavo-visuals, pinned. Only the splash follows main.
 # The GTK theme covers GTK4, libadwaita, the GTK3 stopgap, labwc's title
@@ -320,7 +347,7 @@ test ! -e /etc/systemd/system/timers.target.wants/rpm-ostreed-automatic.timer
 osrel=/usr/lib/os-release
 test -f "${osrel}"
 test -L /etc/os-release
-elavo_version=0.3.0.3
+elavo_version=0.3.1.0
 version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}" | tr -d "\"'")
 [[ "${version_id}" =~ ^[0-9]+$ ]]
 kept_version_id=$(sed -n 's/^VERSION_ID=//p' "${osrel}")

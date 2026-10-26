@@ -1,0 +1,6 @@
+# Applications that are part of Elavo. Each gets a locked entry in
+# /Applications, made from /usr/share/applications/<id>.desktop when that
+# file exists. One desktop id per line, without .desktop.
+io.elavo.SystemSettings
+org.gnome.Nautilus
+foot

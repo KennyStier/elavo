@@ -2,7 +2,7 @@
 # tag. Same Fedora release as base-main, so the binaries link against the GTK
 # the image ships.
 FROM registry.fedoraproject.org/fedora:44 AS folio
-ARG ELAVO_FOLIO_REF=v0.3.2.0
+ARG ELAVO_FOLIO_REF=v0.3.3.1
 RUN dnf5 install -y git gcc pkgconf-pkg-config rust cargo \
         gtk4-devel gtk4-layer-shell-devel wayland-devel && \
     dnf5 clean all
@@ -23,6 +23,17 @@ RUN git clone --depth 1 --branch "${ELAVO_SYSTEM_SETTINGS_REF}" \
         https://github.com/elavo-io/elavo-system-settings.git /src
 WORKDIR /src
 RUN cargo build --release --locked && DESTDIR=/out scripts/install
+
+# The Applications folder: its services, its ctl and pkexec helper, and the
+# Files module. main until the first tag; pin it like Folio after that.
+FROM registry.fedoraproject.org/fedora:44 AS applications
+ARG ELAVO_APPLICATIONS_REF=main
+RUN dnf5 install -y git gcc make pkgconf-pkg-config rust cargo gtk4-devel && \
+    dnf5 clean all
+RUN git clone --depth 1 --branch "${ELAVO_APPLICATIONS_REF}" \
+        https://github.com/elavo-io/elavo-applications.git /src
+WORKDIR /src
+RUN cargo build --release --locked && make -C nautilus && DESTDIR=/out scripts/install
 
 # labwc with the mods layer, built at a pinned revision of elavo-labwc-mods.
 # main until the first tag; pin a tag the way Folio is pinned after that.
@@ -52,6 +63,7 @@ COPY system_files /system_files
 COPY config /config
 COPY --from=folio /out /folio_files
 COPY --from=system-settings /out /system_settings_files
+COPY --from=applications /out /applications_files
 COPY --from=labwc /out /labwc_files
 
 # Base Image
