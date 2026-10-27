@@ -18,8 +18,9 @@ cp -avf "/ctx/system_files"/. /
 # camera in Change Picture.
 # fuse-libs is libfuse.so.2. AppImages built with the older runtime load it to
 # mount themselves; newer ones carry their own. squashfs-tools' unsquashfs
-# reads an AppImage's name and icon for the Applications folder without
-# running it.
+# reads a squashfs AppImage's name and icon for the Applications folder
+# without running it. A DwarFS AppImage needs dwarfsextract, installed below;
+# Fedora 44 does not package it.
 
 dnf5 install -y \
     wlroots \
@@ -161,10 +162,28 @@ test -s /usr/share/elavo-applications/system-applications
 test -s /usr/share/elavo-applications/standardized-icons/template.png
 test -s /usr/share/elavo-applications/standardized-icons/mask.png
 command -v unsquashfs >/dev/null
-# Opening a downloaded AppImage or .flatpakref goes to the Applications
-# service. GIO reads the MIME cache, not the desktop files, so rebuild it.
+# DwarFS AppImages (Brave Origin is one) keep the same ELF runtime and put a
+# DwarFS image where a squashfs image would be. dwarfsextract reads the
+# desktop file and the icon. The binary is upstream's static x86_64 build.
+# Source: https://github.com/mhx/dwarfs/releases/tag/v0.15.8
+dwarfs_version=0.15.8
+dwarfs_sha256=f5eb34c3e2ac1bfcbe66e15b8a66da20897049b22867d2c193bffedf25cc08ae
+dwarfs_tmp=$(mktemp -d)
+curl -fsSL -o "${dwarfs_tmp}/dwarfs.tar.xz" \
+    "https://github.com/mhx/dwarfs/releases/download/v${dwarfs_version}/dwarfs-${dwarfs_version}-Linux-x86_64.tar.xz"
+echo "${dwarfs_sha256}  ${dwarfs_tmp}/dwarfs.tar.xz" | sha256sum -c -
+tar -xJf "${dwarfs_tmp}/dwarfs.tar.xz" -C "${dwarfs_tmp}"
+install -m 755 \
+    "${dwarfs_tmp}/dwarfs-${dwarfs_version}-Linux-x86_64/bin/dwarfsextract" \
+    /usr/bin/dwarfsextract
+rm -rf "${dwarfs_tmp}"
+test -x /usr/bin/dwarfsextract
+# Opening a downloaded AppImage, .flatpakref, or .flatpak bundle goes to
+# the Applications service. GIO reads the MIME cache, not the desktop
+# files, so rebuild it.
 update-desktop-database /usr/share/applications
 grep -q '^application/vnd.flatpak.ref=.*io.elavo.Applications.desktop' /usr/share/applications/mimeinfo.cache
+grep -q '^application/vnd.flatpak=.*io.elavo.Applications.desktop' /usr/share/applications/mimeinfo.cache
 grep -q '^application/vnd.appimage=.*io.elavo.Applications.desktop' /usr/share/applications/mimeinfo.cache
 systemctl --global enable elavo-applications.service
 systemctl enable elavo-applications-system.service elavo-applications-system.path
@@ -174,7 +193,7 @@ systemctl enable elavo-applications-system.service elavo-applications-system.pat
 # bars, and Firefox's window buttons. The icon theme carries the panel's sun
 # and Elavo's app icons, and inherits Adwaita for everything else. The stamp
 # tells elavo-user-theme which build each account's copy came from.
-visuals_theme_rev=86a4bcb26a08f58c3e0b10fdd11eb62291b86e10
+visuals_theme_rev=005251e828be05176f7916445cb54039b1a37d33
 theme_tmp=$(mktemp -d)
 curl -fsSL -o "${theme_tmp}/visuals.tar.gz" \
     "https://github.com/elavo-io/elavo-visuals/archive/${visuals_theme_rev}.tar.gz"
