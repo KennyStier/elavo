@@ -45,7 +45,7 @@ RUN dnf5 install -y git gcc meson ninja-build pkgconf-pkg-config \
         libxml2-devel cairo-devel pango-devel librsvg2-devel \
         libdrm-devel libinput-devel libxkbcommon-devel glib2-devel \
         libpng-devel pixman-devel libsfdo-devel xcb-util-wm-devel \
-        libxcb-devel && \
+        libxcb-devel xorg-x11-server-Xwayland-devel && \
     dnf5 clean all
 RUN git clone --depth 1 --branch "${ELAVO_LABWC_MODS_REF}" \
         https://github.com/elavo-io/elavo-labwc-mods.git /src
@@ -54,7 +54,8 @@ WORKDIR /src
 RUN ./scripts/assemble.sh /tmp/labwc && \
     meson configure /tmp/labwc/build --prefix=/usr && \
     DESTDIR=/out meson install -C /tmp/labwc/build && \
-    test -x /out/usr/bin/labwc && test ! -e /out/usr/local
+    test -x /out/usr/bin/labwc && test ! -e /out/usr/local && \
+    /out/usr/bin/labwc --version | grep -q '+xwayland'
 
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
