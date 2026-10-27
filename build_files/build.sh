@@ -161,6 +161,11 @@ test -s /usr/share/elavo-applications/system-applications
 test -s /usr/share/elavo-applications/standardized-icons/template.png
 test -s /usr/share/elavo-applications/standardized-icons/mask.png
 command -v unsquashfs >/dev/null
+# Opening a downloaded AppImage or .flatpakref goes to the Applications
+# service. GIO reads the MIME cache, not the desktop files, so rebuild it.
+update-desktop-database /usr/share/applications
+grep -q '^application/vnd.flatpak.ref=.*io.elavo.Applications.desktop' /usr/share/applications/mimeinfo.cache
+grep -q '^application/vnd.appimage=.*io.elavo.Applications.desktop' /usr/share/applications/mimeinfo.cache
 systemctl --global enable elavo-applications.service
 systemctl enable elavo-applications-system.service elavo-applications-system.path
 
