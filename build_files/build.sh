@@ -193,7 +193,7 @@ systemctl enable elavo-applications-system.service elavo-applications-system.pat
 # bars, and Firefox's window buttons. The icon theme carries the panel's sun
 # and Elavo's app icons, and inherits Adwaita for everything else. The stamp
 # tells elavo-user-theme which build each account's copy came from.
-visuals_theme_rev=005251e828be05176f7916445cb54039b1a37d33
+visuals_theme_rev=cbe0600aaec9d31242693b6dc256b8a016644d2f
 theme_tmp=$(mktemp -d)
 curl -fsSL -o "${theme_tmp}/visuals.tar.gz" \
     "https://github.com/elavo-io/elavo-visuals/archive/${visuals_theme_rev}.tar.gz"
