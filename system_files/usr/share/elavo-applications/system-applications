@@ -3,4 +3,5 @@
 # file exists. One desktop id per line, without .desktop.
 io.elavo.SystemSettings
 org.gnome.Nautilus
+io.elavo.AppLauncher
 foot
