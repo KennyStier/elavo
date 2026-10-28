@@ -95,12 +95,14 @@ command -v python3 >/dev/null 2>&1 && python3 - "${HOME}" "${config}" <<'EOF' ||
 import glob, json, os, sys
 
 home, config = sys.argv[1], sys.argv[2]
+# Every Brave edition and channel keeps its own folder under BraveSoftware:
+# Brave-Browser, Brave-Browser-Beta, Brave-Browser-Nightly, Brave-Origin.
 roots = [
     f"{config}/google-chrome",
-    f"{config}/BraveSoftware/Brave-Browser",
+    *glob.glob(f"{config}/BraveSoftware/*"),
     f"{config}/chromium",
     f"{home}/.var/app/com.google.Chrome/config/google-chrome",
-    f"{home}/.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser",
+    *glob.glob(f"{home}/.var/app/com.brave.*/config/BraveSoftware/*"),
     f"{home}/.var/app/org.chromium.Chromium/config/chromium",
 ]
 for root in roots:
