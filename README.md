@@ -10,7 +10,7 @@ cosign verify --key cosign.pub ghcr.io/elavo-io/elavo
 
 ## What is in this image
 
-The system name is Elavo. `build.sh` rewrites `/usr/lib/os-release` so `NAME` is Elavo and `VERSION` and `PRETTY_NAME` are Elavo `0.3.1.2`. GRUB's menu title is `PRETTY_NAME`, so a new deployment is `Elavo 0.3.1.2 (ostree:N)`. About reads `VERSION` for the line under the title, and shows `VERSION_ID` as Fedora Version. `VERSION_ID`, `CPE_NAME`, and `OSTREE_VERSION` stay as the base image shipped them. `ID` stays `fedora` so the ISO build and the signed `EFI/fedora` bootloader keep working. Which build is installed is `bootc status`.
+The system name is Elavo. `build.sh` rewrites `/usr/lib/os-release` so `NAME` is Elavo and `VERSION` and `PRETTY_NAME` are Elavo `0.3.1.3`. GRUB's menu title is `PRETTY_NAME`, so a new deployment is `Elavo 0.3.1.3 (ostree:N)`. About reads `VERSION` for the line under the title, and shows `VERSION_ID` as Fedora Version. `VERSION_ID`, `CPE_NAME`, and `OSTREE_VERSION` stay as the base image shipped them. `ID` stays `fedora` so the ISO build and the signed `EFI/fedora` bootloader keep working. Which build is installed is `bootc status`.
 
 The image boots to `greetd` and Folio's login screen, `elavo-greeter`, then a labwc session with Folio, the Elavo desktop: the top panel, the dock, desktop icons, Lens, and the app switcher, from [elavo-folio](https://github.com/elavo-io/elavo-folio). The Containerfile's `folio` stage builds `elavo-folio` at the tag in `ELAVO_FOLIO_REF` and installs the binaries and their systemd user units. The units are enabled globally and are wanted by `graphical-session.target`. This image does not include the control center, the Applications folder, or NVIDIA drivers.
 
